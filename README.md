@@ -217,6 +217,6 @@ This project is proprietary software. All rights reserved.
 
 <div align="center">
 
-**Built with 💛 by Coach Mosab**
+**Built with ❤️ by Mohamed Abed**
 
 </div>

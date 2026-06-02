@@ -18,8 +18,8 @@ export function WorkoutBuilder() {
 
   // Current exercises list
   const [exercises, setExercises] = useState([
-    { id: 1, name: 'Barbell Flat Bench Press', sets: 4, reps: '8-10', rest: '90s', difficulty: 'Hard' },
-    { id: 2, name: 'Incline Dumbbell Flyes', sets: 3, reps: '12', rest: '75s', difficulty: 'Medium' }
+    { id: 1, name: 'Barbell Flat Bench Press', sets: 4, reps: '8-10', rest: '90s', difficulty: 'Hard', day: 1 },
+    { id: 2, name: 'Incline Dumbbell Flyes', sets: 3, reps: '12', rest: '75s', difficulty: 'Medium', day: 1 }
   ])
 
   // New exercise inputs
@@ -28,6 +28,13 @@ export function WorkoutBuilder() {
   const [exReps, setExReps] = useState('10')
   const [exRest, setExRest] = useState('90s')
   const [exDifficulty, setExDifficulty] = useState('Medium')
+  const [exDay, setExDay] = useState(1)
+
+  useEffect(() => {
+    if (exDay > daysPerWeek) {
+      setExDay(1)
+    }
+  }, [daysPerWeek, exDay])
 
   useEffect(() => {
     async function fetchClients() {
@@ -65,7 +72,8 @@ export function WorkoutBuilder() {
       sets: exSets,
       reps: exReps,
       rest: exRest,
-      difficulty: exDifficulty
+      difficulty: exDifficulty,
+      day: exDay
     }
 
     setExercises([...exercises, newEx])
@@ -87,16 +95,24 @@ export function WorkoutBuilder() {
       return
     }
 
-    // Format training routine and exercises beautifully
+    // Format training routine and exercises beautifully grouped by day
     let formattedText = `TRAINING PROGRAM: ${title.toUpperCase()}\n🏋️ Level: ${level.toUpperCase()} | 📅 Duration: ${duration} | 💪 Schedule: ${daysPerWeek} Days/Week\n\nEXERCISES IN PROGRAM:\n`
 
     if (exercises.length === 0) {
       formattedText += `\n• No exercises added to list yet.`
     } else {
-      exercises.forEach((ex, idx) => {
-        formattedText += `\n${idx + 1}. ${ex.name.toUpperCase()}\n`
-        formattedText += `   • ${ex.sets} Sets x ${ex.reps} Reps | Rest: ${ex.rest} | Intensity: ${ex.difficulty}\n`
-      })
+      for (let dayNum = 1; dayNum <= daysPerWeek; dayNum++) {
+        const dayExercises = exercises.filter(ex => (ex.day || 1) === dayNum)
+        formattedText += `\nDAY ${dayNum}:\n`
+        if (dayExercises.length === 0) {
+          formattedText += `   • No exercises scheduled for this day\n`
+        } else {
+          dayExercises.forEach((ex, idx) => {
+            formattedText += `   ${idx + 1}. ${ex.name.toUpperCase()}\n`
+            formattedText += `      • ${ex.sets} Sets x ${ex.reps} Reps | Rest: ${ex.rest} | Intensity: ${ex.difficulty}\n`
+          })
+        }
+      }
     }
 
     try {
@@ -209,40 +225,66 @@ export function WorkoutBuilder() {
                   className="w-full bg-[#161616] border border-[#1F1F1F] rounded-lg py-2.5 px-4 text-sm text-[#F5F5F5] outline-none"
                 />
               </div>
+
+              <div className="space-y-1.5">
+                <label className="text-xs font-bold text-[#666666] uppercase tracking-wider block">Days Per Week</label>
+                <select
+                  value={daysPerWeek}
+                  onChange={(e) => setDaysPerWeek(Number(e.target.value))}
+                  className="w-full bg-[#161616] border border-[#1F1F1F] rounded-lg py-2.5 px-4 text-sm text-[#F5F5F5] outline-none cursor-pointer"
+                >
+                  {[1, 2, 3, 4, 5, 6, 7].map(d => (
+                    <option key={d} value={d}>{d} Days</option>
+                  ))}
+                </select>
+              </div>
             </div>
           </Card>
 
-          {/* Exercise list order */}
-          <div className="space-y-4">
+          {/* Exercise list order grouped by Day */}
+          <div className="space-y-6">
             <h3 className="font-bebas text-xl text-[#F5F5F5] tracking-wide">EXERCISES IN PLAN ({exercises.length})</h3>
             
-            <div className="space-y-3">
-              {exercises.map((ex) => (
-                <Card key={ex.id} className="p-4 flex items-center justify-between gap-4">
-                  <div className="flex items-center gap-3.5 flex-1 min-w-0">
-                    <GripVertical className="text-[#666666] cursor-grab shrink-0" size={18} />
-                    <div className="min-w-0">
-                      <h4 className="font-bebas text-lg text-[#F5F5F5] tracking-wide truncate">{ex.name}</h4>
-                      <div className="flex items-center gap-3 text-[10px] text-[#666666] font-bold uppercase mt-0.5">
-                        <span>{ex.sets} Sets · {ex.reps} Reps</span>
-                        <span>•</span>
-                        <span>Rest: {ex.rest}</span>
-                      </div>
-                    </div>
+            {Array.from({ length: daysPerWeek }, (_, i) => i + 1).map((dayNum) => {
+              const dayExercises = exercises.filter(ex => (ex.day || 1) === dayNum)
+              return (
+                <div key={dayNum} className="space-y-3">
+                  <div className="flex items-center gap-2 border-b border-[#1F1F1F] pb-1">
+                    <span className="font-bebas text-lg text-[#E8FF00] tracking-wider">DAY {dayNum}</span>
+                    <span className="text-[10px] text-[#666666] font-bold">({dayExercises.length} Exercises)</span>
                   </div>
+                  {dayExercises.length === 0 ? (
+                    <p className="text-xs text-[#666666] italic py-1">No exercises added for Day {dayNum} yet.</p>
+                  ) : (
+                    dayExercises.map((ex) => (
+                      <Card key={ex.id} className="p-4 flex items-center justify-between gap-4 bg-[#141414]">
+                        <div className="flex items-center gap-3.5 flex-1 min-w-0">
+                          <GripVertical className="text-[#666666] cursor-grab shrink-0" size={18} />
+                          <div className="min-w-0">
+                            <h4 className="font-bebas text-lg text-[#F5F5F5] tracking-wide truncate">{ex.name}</h4>
+                            <div className="flex items-center gap-3 text-[10px] text-[#666666] font-bold uppercase mt-0.5">
+                              <span>{ex.sets} Sets · {ex.reps} Reps</span>
+                              <span>•</span>
+                              <span>Rest: {ex.rest}</span>
+                            </div>
+                          </div>
+                        </div>
 
-                  <div className="flex items-center gap-3">
-                    <Badge variant={ex.difficulty.toLowerCase()}>{ex.difficulty}</Badge>
-                    <button
-                      onClick={() => handleDeleteExercise(ex.id)}
-                      className="p-1 rounded hover:bg-[#1C1C1C] text-[#666666] hover:text-[#FF3A2D] transition-colors cursor-pointer outline-none"
-                    >
-                      <Trash2 size={16} />
-                    </button>
-                  </div>
-                </Card>
-              ))}
-            </div>
+                        <div className="flex items-center gap-3">
+                          <Badge variant={ex.difficulty.toLowerCase()}>{ex.difficulty}</Badge>
+                          <button
+                            onClick={() => handleDeleteExercise(ex.id)}
+                            className="p-1 rounded hover:bg-[#1C1C1C] text-[#666666] hover:text-[#FF3A2D] transition-colors cursor-pointer outline-none"
+                          >
+                            <Trash2 size={16} />
+                          </button>
+                        </div>
+                      </Card>
+                    ))
+                  )}
+                </div>
+              )
+            })}
           </div>
         </div>
 
@@ -316,6 +358,19 @@ export function WorkoutBuilder() {
                     <option value="Hard">Hard</option>
                   </select>
                 </div>
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-xs font-bold text-[#666666] uppercase tracking-wider block">Target Day</label>
+                <select
+                  value={exDay}
+                  onChange={(e) => setExDay(Number(e.target.value))}
+                  className="w-full bg-[#161616] border border-[#1F1F1F] rounded-lg py-2.5 px-4 text-sm text-[#F5F5F5] outline-none cursor-pointer"
+                >
+                  {Array.from({ length: daysPerWeek }, (_, i) => i + 1).map(d => (
+                    <option key={d} value={d}>Day {d}</option>
+                  ))}
+                </select>
               </div>
 
               <Button type="submit" variant="outline" className="w-full font-bebas uppercase tracking-wider text-sm py-2.5">

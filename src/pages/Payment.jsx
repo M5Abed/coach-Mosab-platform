@@ -5,7 +5,7 @@ import { useAuthStore } from '../store/authStore'
 import { Button } from '../components/ui/Button'
 import { Card } from '../components/ui/Card'
 import { Badge } from '../components/ui/Badge'
-import { Copy, Upload, CheckCircle2, ArrowLeft, Calendar, Phone, DollarSign } from 'lucide-react'
+import { Copy, Upload, CheckCircle2, ArrowLeft, Calendar, Phone, DollarSign, Check, ArrowRight } from 'lucide-react'
 import { useLanguageStore } from '../store/languageStore'
 import { translations } from '../utils/translations'
 import { LanguageSelector } from '../components/ui/LanguageSelector'
@@ -18,8 +18,23 @@ export function Payment() {
   const { language } = useLanguageStore()
   const t = translations[language]
 
-  const selectedPlan = searchParams.get('plan') || '1'
-  const planPrice = searchParams.get('price') || '499'
+  // If coming from landing with a pre-selected plan use it, otherwise null to show selector
+  const urlPlan = searchParams.get('plan')
+  const urlPrice = searchParams.get('price')
+
+  const [selectedPlan, setSelectedPlan] = useState(urlPlan || null)
+  const [planPrice, setPlanPrice] = useState(urlPrice || null)
+
+  // Plan selector data
+  const planOptions = language === 'ar' ? [
+    { duration: '1', name: 'شهر واحد', price: '499', period: 'شهر', popular: false },
+    { duration: '2', name: 'شهران', price: '899', period: 'شهران', popular: true, badge: 'الأكثر طلباً' },
+    { duration: '3', name: '3 أشهر', price: '1299', period: '3 أشهر', popular: false, saving: 'وفر 14%' },
+  ] : [
+    { duration: '1', name: '1 Month', price: '499', period: 'Month', popular: false },
+    { duration: '2', name: '2 Months', price: '899', period: '2 Months', popular: true, badge: 'MOST POPULAR' },
+    { duration: '3', name: '3 Months', price: '1299', period: '3 Months', popular: false, saving: 'SAVE 14%' },
+  ]
 
   const [step, setStep] = useState(1)
   const [copiedMethod, setCopiedMethod] = useState(null)
@@ -160,6 +175,73 @@ export function Payment() {
     )
   }
 
+  // Plan not yet selected — show the plan picker first
+  if (!selectedPlan) {
+    return (
+      <div className="min-h-screen bg-[#0A0A0A] text-[#F5F5F5] flex items-center justify-center p-6 relative font-dmsans select-none">
+        <div className="noise-overlay" />
+        <div className="absolute top-4 right-4 z-20">
+          <LanguageSelector />
+        </div>
+        <div className="w-full max-w-2xl bg-[#111111] border border-[#1F1F1F] rounded-xl p-8 shadow-2xl relative z-10 space-y-8">
+          <div className="flex justify-center">
+            <Link to="/">
+              <img src="/logo.png" alt="Coach Mosab Logo" className="h-14 w-auto object-contain" />
+            </Link>
+          </div>
+          <div className="text-center space-y-1">
+            <h2 className="font-bebas text-3xl tracking-wide uppercase">
+              {language === 'ar' ? 'اختر خطة اشتراكك' : 'Choose Your Plan'}
+            </h2>
+            <p className="text-xs text-[#666666] font-bold uppercase tracking-wide">
+              {language === 'ar' ? 'اختر المدة المناسبة لك قبل المتابعة' : 'Select a duration before proceeding to payment'}
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
+            {planOptions.map((plan) => (
+              <div
+                key={plan.duration}
+                className={`relative bg-[#161616] border rounded-xl p-6 flex flex-col justify-between cursor-pointer transition-all duration-200 hover:-translate-y-1 ${
+                  plan.popular
+                    ? 'border-[#E8FF00] shadow-[0_0_18px_rgba(232,255,0,0.07)]'
+                    : 'border-[#1F1F1F] hover:border-[#E8FF00]/30'
+                }`}
+                onClick={() => { setSelectedPlan(plan.duration); setPlanPrice(plan.price) }}
+              >
+                {plan.badge && (
+                  <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-[#E8FF00] text-[#0A0A0A] font-bold text-[10px] uppercase px-3 py-0.5 rounded tracking-wider shadow">
+                    {plan.badge}
+                  </div>
+                )}
+                {plan.saving && (
+                  <div className="absolute top-3 right-3 bg-[#FF3A2D] text-[#F5F5F5] font-bold text-[9px] uppercase px-2 py-0.5 rounded tracking-wide">
+                    {plan.saving}
+                  </div>
+                )}
+                <div>
+                  <h3 className="font-bebas text-xl text-[#666666] uppercase tracking-wider">{plan.name}</h3>
+                  <div className="flex items-baseline mt-3 gap-1">
+                    <span className="font-bebas text-5xl text-[#F5F5F5]">{plan.price}</span>
+                    <span className="font-semibold text-base text-[#F5F5F5]">{language === 'ar' ? 'ج.م' : 'EGP'}</span>
+                    <span className="text-[10px] text-[#666666] font-bold uppercase ml-1">/ {plan.period}</span>
+                  </div>
+                </div>
+                <Button
+                  variant={plan.popular ? 'primary' : 'outline'}
+                  className="mt-6 w-full font-bebas uppercase tracking-wider text-sm"
+                  onClick={(e) => { e.stopPropagation(); setSelectedPlan(plan.duration); setPlanPrice(plan.price) }}
+                >
+                  {language === 'ar' ? 'اختر هذه الخطة' : 'Select Plan'} <ArrowRight size={14} className="ml-1" />
+                </Button>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className="min-h-screen bg-[#0A0A0A] text-[#F5F5F5] flex items-center justify-center p-6 relative font-dmsans select-none">
       <div className="noise-overlay" />
@@ -181,13 +263,21 @@ export function Payment() {
               {t.paymentSubtitle}
             </p>
           </div>
-          <Badge variant="accent" className="h-fit shrink-0">
-            {selectedPlan === '1'
-              ? (language === 'ar' ? 'شهر واحد' : '1 Month Plan')
-              : selectedPlan === '2'
-              ? (language === 'ar' ? 'شهران' : '2 Months Plan')
-              : (language === 'ar' ? '3 أشهر' : '3 Months Plan')} — {planPrice} {language === 'ar' ? 'ج.م' : 'EGP'}
-          </Badge>
+          <div className="flex flex-col items-end gap-1">
+            <Badge variant="accent" className="h-fit shrink-0">
+              {selectedPlan === '1'
+                ? (language === 'ar' ? 'شهر واحد' : '1 Month Plan')
+                : selectedPlan === '2'
+                ? (language === 'ar' ? 'شهران' : '2 Months Plan')
+                : (language === 'ar' ? '3 أشهر' : '3 Months Plan')} — {planPrice} {language === 'ar' ? 'ج.م' : 'EGP'}
+            </Badge>
+            <button
+              onClick={() => { setSelectedPlan(null); setPlanPrice(null); setStep(1) }}
+              className="text-[10px] text-[#666666] hover:text-[#E8FF00] font-bold uppercase tracking-wider transition-colors cursor-pointer outline-none"
+            >
+              {language === 'ar' ? '← تغيير الخطة' : '← Change Plan'}
+            </button>
+          </div>
         </div>
 
         {step === 1 ? (

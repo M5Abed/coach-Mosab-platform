@@ -38,7 +38,7 @@ export function parseWorkoutPlan(plan) {
       level: plan.level || 'beginner',
       duration: plan.duration || 'Ongoing',
       daysPerWeek: plan.daysPerWeek || 3,
-      exercises: plan.exercises,
+      exercises: plan.exercises.map(ex => ({ ...ex, day: ex.day || 1 })),
       text: plan.text || ''
     }
   }
@@ -51,7 +51,7 @@ export function parseWorkoutPlan(plan) {
         level: plan.level || 'beginner',
         duration: plan.duration || 'Ongoing',
         daysPerWeek: plan.daysPerWeek || 3,
-        exercises: plan.exercises,
+        exercises: plan.exercises.map(ex => ({ ...ex, day: ex.day || 1 })),
         text: ''
       }
     }
@@ -91,9 +91,17 @@ export function parseWorkoutPlan(plan) {
 
   // Parse Exercises
   let currentExercise = null
+  let currentDay = 1
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i]
     if (!line) continue
+
+    // Detect Day Headers like "DAY 1:" or "Day 2"
+    const dayHeaderMatch = line.match(/^DAY\s*(\d+)[:\-]?/i)
+    if (dayHeaderMatch) {
+      currentDay = Number(dayHeaderMatch[1])
+      continue
+    }
 
     // Matches e.g. "1. Deadlift" or "• Lat Pulldown"
     const exerciseMatch = line.match(/^(\d+)\.\s*(.+)$/) || line.match(/^[•*-]\s*(.+)$/)
@@ -121,7 +129,8 @@ export function parseWorkoutPlan(plan) {
         difficulty: 'Medium',
         dotColor: 'bg-[#FF8C00]',
         guide: 'Maintain strict control over both eccentric and concentric phases.',
-        tip: 'Keep your core engaged throughout.'
+        tip: 'Keep your core engaged throughout.',
+        day: currentDay
       }
     } else if (spaceMatch) {
       const name = spaceMatch[1].replace(/^[#\s*=-]+/, '').trim()
@@ -163,7 +172,8 @@ export function parseWorkoutPlan(plan) {
         difficulty: rir === '0' || rir === '^0' ? 'Hard' : rir === '1' ? 'Medium' : 'Easy',
         dotColor: rir === '0' || rir === '^0' ? 'bg-[#FF3A2D]' : rir === '1' ? 'bg-[#FF8C00]' : 'bg-[#34D399]',
         guide: `RIR (Reps in Reserve): ${rir}. Keep form stable.`,
-        tip: `Maintain control and focus on the target muscles.`
+        tip: `Maintain control and focus on the target muscles.`,
+        day: currentDay
       })
     } else if (currentExercise && (line.includes('Sets') || line.includes('Reps') || line.includes('Rest') || line.includes('Intensity') || line.includes('Difficulty'))) {
       const setsMatch = line.match(/(\d+)\s*Sets/i)

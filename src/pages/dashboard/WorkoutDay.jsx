@@ -130,7 +130,10 @@ export function WorkoutDay() {
   // Get raw exercises from user store
   let exercises = []
   if (workoutPlan?.exercises && workoutPlan.exercises.length > 0) {
-    exercises = workoutPlan.exercises.map((ex, index) => {
+    const targetDay = dayId === 'today' ? 1 : Number(dayId)
+    const filteredRaw = workoutPlan.exercises.filter(ex => !ex.day || Number(ex.day) === targetDay)
+
+    exercises = filteredRaw.map((ex, index) => {
       const nameLower = (ex.name || '').toLowerCase()
       let tip = ex.tip || 'Focus on slow negative control, correct posture, and squeezing the target muscle group.'
       let guide = ex.guide || '1. Assume a stable starting position. 2. Contract the working muscle with slow motion. 3. Return to starting state. 4. Complete targeted repetitions.'
@@ -228,7 +231,9 @@ export function WorkoutDay() {
       {/* Day title */}
       <div>
         <h1 className="font-bebas text-4xl md:text-5xl text-[#F5F5F5] uppercase tracking-wide">
-          {workoutPlan?.title || (language === 'ar' ? 'يوم راحة واستشفاء' : 'ACTIVE RECOVERY & REST')}
+          {workoutPlan?.title 
+            ? `${workoutPlan.title} - DAY ${dayId === 'today' ? '1' : dayId}` 
+            : (language === 'ar' ? 'يوم راحة واستشفاء' : 'ACTIVE RECOVERY & REST')}
         </h1>
         <p className="text-sm text-[#666666] font-semibold uppercase tracking-wider">
           {exercises.length > 0 

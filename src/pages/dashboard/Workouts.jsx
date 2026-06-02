@@ -90,6 +90,11 @@ export function Workouts() {
   const rawPlan = user?.workout_plan
   const plan = useMemo(() => parseWorkoutPlan(rawPlan), [rawPlan])
 
+  const totalDays = useMemo(() => {
+    if (!plan || !Array.isArray(plan.exercises)) return 0
+    return Math.max(plan.daysPerWeek || 1, ...plan.exercises.map(ex => Number(ex.day || 1)))
+  }, [plan])
+
   // Check for structured data vs nothing
   const hasStructuredData = plan && Array.isArray(plan.exercises) && plan.exercises.length > 0
 
@@ -132,7 +137,7 @@ export function Workouts() {
               </div>
 
               <Button
-                onClick={() => navigate('/dashboard/workouts/active/today')}
+                onClick={() => navigate('/dashboard/workouts/active/1')}
                 className="font-bebas uppercase tracking-wider text-sm py-2.5 px-6 shadow-md shadow-[#E8FF00]/5 hover:shadow-[#E8FF00]/15 transition-all duration-300 flex items-center gap-1.5"
               >
                 <Play size={14} fill="currentColor" /> Start Workout Session
@@ -167,19 +172,60 @@ export function Workouts() {
             </div>
           </Card>
 
-          {/* ── Exercise list ── */}
-          {plan.exercises && Array.isArray(plan.exercises) && plan.exercises.length > 0 && (
-            <div className="space-y-4">
-              <h3 className="font-bebas text-xl text-[#F5F5F5] tracking-wide uppercase">
-                EXERCISE LINEUP ({plan.exercises.length})
-              </h3>
-              <div className="space-y-3">
-                {plan.exercises.map((ex, idx) => (
-                  <ExerciseCard key={ex.id || idx} exercise={ex} index={idx} />
-                ))}
-              </div>
+          {/* ── Weekly Days Grid ── */}
+          <div className="space-y-4">
+            <h3 className="font-bebas text-xl text-[#F5F5F5] tracking-wide uppercase">
+              WEEKLY SCHEDULE ({totalDays} DAYS)
+            </h3>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {Array.from({ length: totalDays }, (_, i) => i + 1).map((dayNum) => {
+                const dayExercises = plan.exercises.filter(ex => Number(ex.day || 1) === dayNum)
+                return (
+                  <Card key={dayNum} className="bg-[#111111] border border-[#1F1F1F] p-5 flex flex-col justify-between hover:border-[#E8FF00]/30 transition-all duration-300 group">
+                    <div className="space-y-4">
+                      {/* Header */}
+                      <div className="flex items-center justify-between border-b border-[#1F1F1F] pb-2.5">
+                        <span className="font-bebas text-xl text-[#E8FF00] tracking-wider group-hover:text-[#F5F5F5] transition-colors">DAY {dayNum}</span>
+                        <Badge variant="outline" className="text-[10px] font-bold py-0.5 border-[#1F1F1F] text-[#888888] bg-[#0A0A0A]">
+                          {dayExercises.length} Exercises
+                        </Badge>
+                      </div>
+                      
+                      {/* Exercises list */}
+                      <div className="space-y-2 max-h-[220px] overflow-y-auto pr-1 custom-scrollbar">
+                        {dayExercises.length === 0 ? (
+                          <div className="text-center py-6">
+                            <span className="text-xs text-[#666666] font-semibold uppercase italic tracking-wider block">REST & ACTIVE RECOVERY</span>
+                          </div>
+                        ) : (
+                          dayExercises.map((ex, idx) => (
+                            <div key={ex.id || idx} className="text-xs text-[#F5F5F5] flex justify-between gap-3 border-b border-[#1F1F1F]/40 pb-2 last:border-none">
+                              <span className="font-medium truncate max-w-[170px]">{ex.name}</span>
+                              <span className="text-[#888888] font-bold shrink-0">{ex.sets}x{ex.reps}</span>
+                            </div>
+                          ))
+                        )}
+                      </div>
+                    </div>
+
+                    <Button
+                      onClick={() => navigate(`/dashboard/workouts/active/${dayNum}`)}
+                      variant={dayExercises.length === 0 ? "outline" : "primary"}
+                      size="sm"
+                      className="w-full font-bebas uppercase tracking-wider text-xs py-2.5 mt-5 flex items-center justify-center gap-1.5"
+                    >
+                      {dayExercises.length === 0 ? "Recovery Info" : (
+                        <>
+                          <Play size={11} fill="currentColor" /> Start Day {dayNum}
+                        </>
+                      )}
+                    </Button>
+                  </Card>
+                )
+              })}
             </div>
-          )}
+          </div>
         </>
       ) : (
         /* No Plan Assigned */

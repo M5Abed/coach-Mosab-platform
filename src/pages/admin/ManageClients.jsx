@@ -12,6 +12,7 @@ export function ManageClients() {
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState('')
   const [selectedClient, setSelectedClient] = useState(null)
+  const [statusFilter, setStatusFilter] = useState('all')
 
   // Plan editing states
   const [workoutPlanText, setWorkoutPlanText] = useState('')
@@ -65,6 +66,55 @@ export function ManageClients() {
     setEditPhone(client.phone || '')
     setEditLevel(client.fitness_level || 'beginner')
     setEditStatus(client.subscription_status || 'inactive')
+  }
+
+  const handleQuickApprove = async (client) => {
+    try {
+      const { error } = await supabase
+        .from('profiles')
+        .update({ subscription_status: 'active' })
+        .eq('id', client.id)
+
+      if (error) throw error
+
+      toast.success(`✅ Approved ${client.full_name}'s subscription!`)
+      
+      // Update local state
+      setClients(prev => prev.map(c => 
+        c.id === client.id 
+          ? { ...c, subscription_status: 'active' }
+          : c
+      ))
+      setSelectedClient(prev => ({ ...prev, subscription_status: 'active' }))
+    } catch (err) {
+      toast.error('Approval failed: ' + err.message)
+    }
+  }
+
+  const handleQuickReject = async (client) => {
+    const reason = window.prompt("Enter rejection reason (optional):", "Blurred Screenshot")
+    if (reason === null) return // cancelled
+    
+    try {
+      const { error } = await supabase
+        .from('profiles')
+        .update({ subscription_status: 'rejected', rejection_reason: reason })
+        .eq('id', client.id)
+
+      if (error) throw error
+
+      toast.success(`❌ Rejected subscription request.`)
+      
+      // Update local state
+      setClients(prev => prev.map(c => 
+        c.id === client.id 
+          ? { ...c, subscription_status: 'rejected', rejection_reason: reason }
+          : c
+      ))
+      setSelectedClient(prev => ({ ...prev, subscription_status: 'rejected', rejection_reason: reason }))
+    } catch (err) {
+      toast.error('Rejection failed: ' + err.message)
+    }
   }
 
   const handleSavePlans = async () => {
@@ -169,11 +219,18 @@ export function ManageClients() {
     }
   }
 
-  const filteredClients = clients.filter(c => 
-    (c.full_name || '').toLowerCase().includes(searchTerm.toLowerCase()) || 
-    (c.email || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
-    (c.phone || '').includes(searchTerm)
-  )
+  const filteredClients = clients.filter(c => {
+    const matchesSearch = (c.full_name || '').toLowerCase().includes(searchTerm.toLowerCase()) || 
+      (c.email || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (c.phone || '').includes(searchTerm)
+
+    if (!matchesSearch) return false
+
+    if (statusFilter === 'pending') return c.subscription_status === 'pending'
+    if (statusFilter === 'active') return c.subscription_status === 'active'
+    if (statusFilter === 'rejected') return c.subscription_status === 'rejected'
+    return true
+  })
 
   return (
     <div className="space-y-6 font-dmsans select-none relative">
@@ -196,16 +253,54 @@ export function ManageClients() {
         </button>
       </div>
 
-      {/* Search Input */}
-      <div className="relative">
-        <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[#666666]" size={18} />
-        <input
-          type="text"
-          placeholder="Search real clients by name, email or phone..."
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-          className="w-full bg-[#111111] border border-[#1F1F1F] rounded-xl py-3 pl-11 pr-4 text-sm text-[#F5F5F5] placeholder-[#666666] focus:border-[#E8FF00]/40 outline-none transition-colors"
-        />
+      {/* Search and Filter Row */}
+      <div className="space-y-3">
+        <div className="relative">
+          <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[#666666]" size={18} />
+          <input
+            type="text"
+            placeholder="Search real clients by name, email or phone..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="w-full bg-[#111111] border border-[#1F1F1F] rounded-xl py-3 pl-11 pr-4 text-sm text-[#F5F5F5] placeholder-[#666666] focus:border-[#E8FF00]/40 outline-none transition-colors"
+          />
+        </div>
+
+        {/* Status Filter Tabs */}
+        <div className="flex flex-wrap gap-2">
+          <button
+            onClick={() => setStatusFilter('all')}
+            className={`px-4 py-1.5 rounded-lg text-xs font-bold uppercase tracking-wider transition-colors cursor-pointer outline-none ${
+              statusFilter === 'all' ? 'bg-[#E8FF00] text-[#0A0A0A]' : 'bg-[#111111] border border-[#1F1F1F] text-[#666666] hover:text-[#F5F5F5]'
+            }`}
+          >
+            All ({clients.length})
+          </button>
+          <button
+            onClick={() => setStatusFilter('pending')}
+            className={`px-4 py-1.5 rounded-lg text-xs font-bold uppercase tracking-wider transition-colors cursor-pointer outline-none flex items-center gap-1.5 ${
+              statusFilter === 'pending' ? 'bg-[#FF8C00] text-black' : 'bg-[#111111] border border-[#1F1F1F] text-[#FF8C00]/80 hover:text-[#FF8C00]'
+            }`}
+          >
+            Pending ({clients.filter(c => c.subscription_status === 'pending').length})
+          </button>
+          <button
+            onClick={() => setStatusFilter('active')}
+            className={`px-4 py-1.5 rounded-lg text-xs font-bold uppercase tracking-wider transition-colors cursor-pointer outline-none flex items-center gap-1.5 ${
+              statusFilter === 'active' ? 'bg-[#00E676] text-black' : 'bg-[#111111] border border-[#1F1F1F] text-[#00E676]/80 hover:text-[#00E676]'
+            }`}
+          >
+            Active ({clients.filter(c => c.subscription_status === 'active').length})
+          </button>
+          <button
+            onClick={() => setStatusFilter('rejected')}
+            className={`px-4 py-1.5 rounded-lg text-xs font-bold uppercase tracking-wider transition-colors cursor-pointer outline-none flex items-center gap-1.5 ${
+              statusFilter === 'rejected' ? 'bg-[#FF3A2D] text-[#F5F5F5]' : 'bg-[#111111] border border-[#1F1F1F] text-[#FF3A2D]/80 hover:text-[#FF3A2D]'
+            }`}
+          >
+            Rejected ({clients.filter(c => c.subscription_status === 'rejected').length})
+          </button>
+        </div>
       </div>
 
       {/* Main Grid: List + Detail Drawer Side-by-Side if selected */}
@@ -243,6 +338,24 @@ export function ManageClients() {
                   <div className="flex items-center justify-between sm:justify-end gap-3 border-t sm:border-none border-[#1F1F1F] pt-2.5 sm:pt-0">
                     <Badge variant={client.fitness_level}>{client.fitness_level}</Badge>
                     <Badge variant={client.subscription_status}>{client.subscription_status}</Badge>
+                    
+                    {client.subscription_status === 'pending' && (
+                      <div className="flex gap-1.5" onClick={(e) => e.stopPropagation()}>
+                        <button 
+                          onClick={() => handleQuickApprove(client)}
+                          className="px-2.5 py-1 rounded text-[10px] font-bold uppercase tracking-wider bg-[#E8FF00] text-black hover:bg-[#d4eb00] transition-colors cursor-pointer outline-none"
+                        >
+                          Approve
+                        </button>
+                        <button 
+                          onClick={() => handleQuickReject(client)}
+                          className="px-2.5 py-1 rounded text-[10px] font-bold uppercase tracking-wider border border-[#FF3A2D] text-[#FF3A2D] hover:bg-[#FF3A2D]/10 transition-colors cursor-pointer outline-none"
+                        >
+                          Reject
+                        </button>
+                      </div>
+                    )}
+
                     <button className="p-1 rounded hover:bg-[#1C1C1C] text-[#666666] hover:text-[#E8FF00] transition-colors cursor-pointer outline-none">
                       <Eye size={16} />
                     </button>
@@ -270,6 +383,49 @@ export function ManageClients() {
                 <h2 className="font-bebas text-3xl text-[#F5F5F5] tracking-wide uppercase">{selectedClient.full_name || 'Fitness Member'}</h2>
                 <span className="text-xs text-[#666666] font-semibold">{selectedClient.email}</span>
               </div>
+
+              {selectedClient.subscription_status === 'pending' && (
+                <div className="bg-[#FF8C00]/10 border border-[#FF8C00]/25 rounded-lg p-4 space-y-3">
+                  <div className="flex items-center gap-2 text-[#FF8C00] font-bold text-xs uppercase tracking-wider">
+                    <AlertTriangle size={16} />
+                    <span>Pending Subscription Review</span>
+                  </div>
+                  <p className="text-[11px] text-[#A0A0A0] font-medium leading-relaxed">
+                    This client has submitted a payment confirmation and is waiting to be approved or rejected.
+                  </p>
+                  
+                  {selectedClient.payment_screenshot_url && (
+                    <div className="border border-[#1F1F1F] rounded-lg overflow-hidden bg-black/40 p-2.5 flex items-center justify-between gap-3">
+                      <span className="text-[10px] font-bold text-[#666666] uppercase">Payment Slip:</span>
+                      <a 
+                        href={selectedClient.payment_screenshot_url} 
+                        target="_blank" 
+                        rel="noreferrer"
+                        className="text-[10px] font-bold text-[#E8FF00] hover:underline uppercase flex items-center gap-1 cursor-pointer outline-none"
+                      >
+                        View Screenshot <Eye size={12} />
+                      </a>
+                    </div>
+                  )}
+
+                  <div className="flex gap-2 pt-1">
+                    <Button 
+                      onClick={() => handleQuickApprove(selectedClient)}
+                      variant="primary"
+                      className="flex-1 font-bebas uppercase tracking-wider text-xs py-2 bg-[#E8FF00] text-black hover:bg-[#d4eb00]"
+                    >
+                      Approve Client
+                    </Button>
+                    <Button 
+                      onClick={() => handleQuickReject(selectedClient)}
+                      variant="outline"
+                      className="flex-1 font-bebas uppercase tracking-wider text-xs py-2 text-[#FF3A2D] hover:bg-[#FF3A2D]/10 hover:border-[#FF3A2D]/20"
+                    >
+                      Reject Request
+                    </Button>
+                  </div>
+                </div>
+              )}
 
               {!isEditingProfile ? (
                 <>

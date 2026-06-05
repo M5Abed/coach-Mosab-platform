@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react'
+import { Link } from 'react-router-dom'
 import { Card } from '../../components/ui/Card'
 import { Badge } from '../../components/ui/Badge'
 import { supabase } from '../../lib/supabase'
@@ -6,9 +7,9 @@ import { Users, CreditCard, Video, RefreshCw } from 'lucide-react'
 
 export function AdminDashboard() {
   const [stats, setStats] = useState([
-    { name: 'Active Subscribers', value: '0', icon: <Users size={20} />, color: 'text-[#E8FF00] bg-[#E8FF00]/10 border-[#E8FF00]/25' },
-    { name: 'Pending Payments', value: '0', icon: <CreditCard size={20} />, color: 'text-[#FF8C00] bg-[#FF8C00]/10 border-[#FF8C00]/25' },
-    { name: 'Videos Uploaded', value: '0', icon: <Video size={20} />, color: 'text-[#4DA6FF] bg-[#4DA6FF]/10 border-[#4DA6FF]/25' }
+    { name: 'Active Subscribers', value: '0', icon: <Users size={20} />, color: 'text-[#E8FF00] bg-[#E8FF00]/10 border-[#E8FF00]/25', link: '/admin/clients' },
+    { name: 'Pending Payments', value: '0', icon: <CreditCard size={20} />, color: 'text-[#FF8C00] bg-[#FF8C00]/10 border-[#FF8C00]/25', link: '/admin/payments' },
+    { name: 'Videos Uploaded', value: '0', icon: <Video size={20} />, color: 'text-[#4DA6FF] bg-[#4DA6FF]/10 border-[#4DA6FF]/25', link: '/admin/videos' }
   ])
 
   const [signups, setSignups] = useState([])
@@ -37,9 +38,9 @@ export function AdminDashboard() {
       const videoCount = videosRes.count || 0
 
       setStats([
-        { name: 'Active Subscribers', value: String(activeCount), icon: <Users size={20} />, color: 'text-[#E8FF00] bg-[#E8FF00]/10 border-[#E8FF00]/25' },
-        { name: 'Pending Payments', value: String(pendingCount), icon: <CreditCard size={20} />, color: 'text-[#FF8C00] bg-[#FF8C00]/10 border-[#FF8C00]/25' },
-        { name: 'Videos Uploaded', value: String(videoCount), icon: <Video size={20} />, color: 'text-[#4DA6FF] bg-[#4DA6FF]/10 border-[#4DA6FF]/25' }
+        { name: 'Active Subscribers', value: String(activeCount), icon: <Users size={20} />, color: 'text-[#E8FF00] bg-[#E8FF00]/10 border-[#E8FF00]/25', link: '/admin/clients' },
+        { name: 'Pending Payments', value: String(pendingCount), icon: <CreditCard size={20} />, color: 'text-[#FF8C00] bg-[#FF8C00]/10 border-[#FF8C00]/25', link: '/admin/payments' },
+        { name: 'Videos Uploaded', value: String(videoCount), icon: <Video size={20} />, color: 'text-[#4DA6FF] bg-[#4DA6FF]/10 border-[#4DA6FF]/25', link: '/admin/videos' }
       ])
 
       // 2. Map recent enrollments
@@ -88,15 +89,17 @@ export function AdminDashboard() {
       {/* Stats grid */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         {stats.map((stat) => (
-          <Card key={stat.name} className="flex items-center gap-4">
-            <div className={`p-3 rounded-lg border ${stat.color}`}>
-              {stat.icon}
-            </div>
-            <div>
-              <span className="text-[10px] text-[#666666] font-bold uppercase tracking-wider block">{stat.name}</span>
-              <span className="font-bebas text-2xl text-[#F5F5F5]">{stat.value}</span>
-            </div>
-          </Card>
+          <Link key={stat.name} to={stat.link} className="block transition-transform duration-200 hover:-translate-y-1">
+            <Card className="flex items-center gap-4 h-full cursor-pointer hover:border-[#E8FF00]/30 transition-colors">
+              <div className={`p-3 rounded-lg border ${stat.color}`}>
+                {stat.icon}
+              </div>
+              <div>
+                <span className="text-[10px] text-[#666666] font-bold uppercase tracking-wider block">{stat.name}</span>
+                <span className="font-bebas text-2xl text-[#F5F5F5]">{stat.value}</span>
+              </div>
+            </Card>
+          </Link>
         ))}
       </div>
 

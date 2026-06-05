@@ -26,7 +26,7 @@ export function ManagePayments() {
     try {
       const { data, error } = await supabase
         .from('profiles')
-        .select('id, full_name, email, phone, subscription_status, plan_duration, rejection_reason, updated_at')
+        .select('id, full_name, email, phone, subscription_status, plan_duration, rejection_reason, updated_at, payment_screenshot_url')
         .in('subscription_status', ['pending', 'active', 'rejected'])
         .neq('role', 'admin')  // exclude admin profiles
         .order('updated_at', { ascending: false })
@@ -47,7 +47,7 @@ export function ManagePayments() {
         status: p.subscription_status,
         plan: p.plan_duration || '—',
         rejectionReason: p.rejection_reason || '',
-        screenshotUrl: null
+        screenshotUrl: p.payment_screenshot_url || null
       })))
     } catch (err) {
       console.error('[ManagePayments] Fetch error:', err)

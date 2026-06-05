@@ -2,6 +2,7 @@ import React, { useState } from 'react'
 import { Link, useNavigate, useSearchParams, Navigate } from 'react-router-dom'
 import { toast } from '../store/toastStore'
 import { useAuthStore } from '../store/authStore'
+import { supabase } from '../lib/supabase'
 import { Button } from '../components/ui/Button'
 import { Card } from '../components/ui/Card'
 import { Badge } from '../components/ui/Badge'
@@ -105,45 +106,69 @@ export function Payment() {
 
     setSubmitting(true)
     try {
-      // Telegram Bot Notification Integration
-      const botToken = import.meta.env.VITE_TELEGRAM_BOT_TOKEN
-      const chatId = import.meta.env.VITE_TELEGRAM_CHAT_ID
-
-      if (botToken && chatId) {
-        const caption = `🏋️‍♂️ COACH MOSAB - NEW PAYMENT 🏋️‍♂️\n\n` +
-                        `👤 User: ${user?.full_name || 'N/A'}\n` +
-                        `📧 Email: ${user?.email || 'N/A'}\n` +
-                        `📱 Sender Phone: ${phone}\n` +
-                        `💳 Channel: ${selectedMethod?.name || 'N/A'}\n` +
-                        `💰 Amount: ${amount} EGP\n` +
-                        `📅 Date: ${date}\n` +
-                        `📝 Notes: ${notes || 'None'}`
-
-        const formData = new FormData()
-        formData.append('chat_id', chatId)
-        formData.append('photo', screenshot)
-        formData.append('caption', caption)
-
-        const tgRes = await fetch(`https://api.telegram.org/bot${botToken}/sendPhoto`, {
-          method: 'POST',
-          body: formData,
+      // 1. Upload screenshot to Supabase Storage
+      let publicScreenshotUrl = null
+      const fileExt = screenshot.name.split('.').pop()
+      const fileName = `${user.id}/${Date.now()}.${fileExt}`
+      
+      const { data: uploadData, error: uploadError } = await supabase.storage
+        .from('payments')
+        .upload(fileName, screenshot, {
+          cacheControl: '3600',
+          upsert: true
         })
 
-        if (!tgRes.ok) {
-          const errData = await tgRes.json()
-          console.error('Telegram API error details:', errData)
-          throw new Error(language === 'ar' ? 'فشل إرسال الإشعار لـ Telegram.' : 'Failed to send notification to Telegram.')
-        }
-      } else {
-        console.warn('Telegram Credentials missing. Falling back to simulation mode.')
-        await new Promise((resolve) => setTimeout(resolve, 1500))
+      if (uploadError) {
+        console.error('Supabase Storage Upload Error:', uploadError)
+        throw new Error(language === 'ar' ? 'فشل رفع صورة إثبات الدفع.' : 'Failed to upload payment screenshot.')
       }
+
+      const { data: publicUrlData } = supabase.storage
+        .from('payments')
+        .getPublicUrl(fileName)
       
-      // Update subscription status in store profile
+      publicScreenshotUrl = publicUrlData.publicUrl
+
+      // 2. Update subscription status & screenshot URL in store profile
       await updateProfile({
         subscription_status: 'pending',
-        plan_duration: selectedPlan
+        plan_duration: selectedPlan,
+        payment_screenshot_url: publicScreenshotUrl
       })
+
+      // 3. Telegram Bot Notification Integration (Non-blocking)
+      const botToken = import.meta.env.VITE_TELEGRAM_BOT_TOKEN || '8963717551:AAGjQ6XkjDWDKVzJ9rJNe8KESslCkWZ1pYg'
+      const chatId = import.meta.env.VITE_TELEGRAM_CHAT_ID || '-1003949308558'
+
+      if (botToken && chatId) {
+        try {
+          const caption = `🏋️‍♂️ COACH MOSAB - NEW PAYMENT 🏋️‍♂️\n\n` +
+                          `👤 User: ${user?.full_name || 'N/A'}\n` +
+                          `📧 Email: ${user?.email || 'N/A'}\n` +
+                          `📱 Sender Phone: ${phone}\n` +
+                          `💳 Channel: ${selectedMethod?.name || 'N/A'}\n` +
+                          `💰 Amount: ${amount} EGP\n` +
+                          `📅 Date: ${date}\n` +
+                          `📝 Notes: ${notes || 'None'}`
+
+          const formData = new FormData()
+          formData.append('chat_id', chatId)
+          formData.append('photo', screenshot)
+          formData.append('caption', caption)
+
+          const tgRes = await fetch(`https://api.telegram.org/bot${botToken}/sendPhoto`, {
+            method: 'POST',
+            body: formData,
+          })
+
+          if (!tgRes.ok) {
+            const errData = await tgRes.json()
+            console.warn('Telegram API error details:', errData)
+          }
+        } catch (tgErr) {
+          console.warn('Telegram notification failed to send:', tgErr)
+        }
+      }
 
       setSuccess(true)
       toast.success(language === 'ar' ? 'تم رفع إثبات الدفع بنجاح!' : 'Your payment screenshot has been uploaded!')

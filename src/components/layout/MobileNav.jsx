@@ -24,6 +24,7 @@ export function MobileNav() {
   const adminTabs = [
     { name: language === 'ar' ? "لوحة الإشراف" : "Admin", path: '/admin', icon: <ShieldAlert size={20} /> },
     { name: language === 'ar' ? "المشتركون" : "Clients", path: '/admin/clients', icon: <Users size={20} /> },
+    { name: language === 'ar' ? "المدفوعات" : "Payments", path: '/admin/payments', icon: <CreditCard size={20} /> },
     { name: language === 'ar' ? "التمارين" : "Workouts", path: '/admin/workouts/new', icon: <Dumbbell size={20} /> },
     { name: language === 'ar' ? "الأنظمة" : "Nutrition", path: '/admin/nutrition/new', icon: <Apple size={20} /> },
   ]

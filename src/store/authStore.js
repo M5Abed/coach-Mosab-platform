@@ -51,8 +51,21 @@ export const useAuthStore = create((set, get) => ({
         .single()
 
       if (error) {
-        console.warn('Error fetching user profile from database, using auth metadata:', error)
-        // Fallback to auth metadata if database profile doesn't exist yet
+        console.warn('Error fetching user profile from database:', error)
+        
+        // If the profile row was deleted/missing, sign the user out immediately to clear local session
+        if (error.code === 'PGRST116') {
+          console.warn('User profile does not exist in database (deleted). Signing out...')
+          try {
+            await supabase.auth.signOut()
+          } catch (signOutErr) {
+            console.warn('Sign out during session sync failed:', signOutErr)
+          }
+          set({ session: null, user: null, initialized: true, loading: false })
+          return
+        }
+
+        // Fallback to auth metadata if database profile doesn't exist yet for transient/other errors
         set({
           user: {
             id: session.user.id,

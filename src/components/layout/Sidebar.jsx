@@ -62,7 +62,7 @@ export function Sidebar() {
   }
 
   return (
-    <aside className="w-[240px] h-screen bg-[#111111] border-r rtl:border-r-0 rtl:border-l border-[#1F1F1F] flex flex-col fixed left-0 rtl:left-auto rtl:right-0 top-0 z-40">
+    <aside className="hidden md:flex w-[240px] h-screen bg-[#111111] border-r rtl:border-r-0 rtl:border-l border-[#1F1F1F] flex-col fixed left-0 rtl:left-auto rtl:right-0 top-0 z-40">
       {/* Brand logo/header */}
       <div className="p-6 border-b border-[#1F1F1F] flex flex-col items-center">
         <Link to="/" className="flex items-center justify-center gap-2 group">

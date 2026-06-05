@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react'
+import React, { useMemo, useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuthStore } from '../../store/authStore'
 import { useLanguageStore } from '../../store/languageStore'
@@ -9,12 +9,39 @@ import { Badge } from '../../components/ui/Badge'
 import { Flame, Dumbbell, Apple, Video, Play, Radio, Calendar } from 'lucide-react'
 import { getUserStats } from '../../utils/userStats'
 import { parseWorkoutPlan, parseNutritionPlan } from '../../utils/planParser'
+import { supabase } from '../../lib/supabase'
 
 export function Dashboard() {
   const navigate = useNavigate()
   const user = useAuthStore((state) => state.user)
   const { language } = useLanguageStore()
   const t = translations[language]
+
+  const [latestVideo, setLatestVideo] = useState(null)
+  const [loadingVideo, setLoadingVideo] = useState(true)
+
+  useEffect(() => {
+    const fetchLatestVideo = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('videos')
+          .select('*')
+          .eq('active', true)
+          .order('created_at', { ascending: false })
+          .limit(1)
+
+        if (error) throw error
+        if (data && data.length > 0) {
+          setLatestVideo(data[0])
+        }
+      } catch (err) {
+        console.error('Error fetching latest video:', err)
+      } finally {
+        setLoadingVideo(false)
+      }
+    }
+    fetchLatestVideo()
+  }, [])
 
   const stats = useMemo(() => getUserStats(user?.id), [user?.id])
 
@@ -30,6 +57,12 @@ export function Dashboard() {
   const workoutLevel = String(workoutPlan?.level || 'intermediate').toLowerCase()
   const workoutTitle = workoutPlan?.title || null
   const workoutDuration = workoutPlan?.duration || null
+
+  const totalDays = workoutPlan?.daysPerWeek || 5
+  const totalDaysAr = totalDays === 1 ? 'يوم واحد'
+    : totalDays === 2 ? 'يومين'
+    : totalDays >= 3 && totalDays <= 10 ? `${totalDays} أيام`
+    : `${totalDays} يوم`
 
   // Dynamic description
   const workoutDescription = workoutPlan 
@@ -81,8 +114,8 @@ export function Dashboard() {
             <span className="text-[10px] text-[#666666] font-bold uppercase tracking-wider block">{language === 'ar' ? 'المكتمل' : 'Completed'}</span>
             <span className="font-bebas text-2xl text-[#F5F5F5]">
               {language === 'ar' 
-                ? `${stats.completedDaysThisWeek} / ٥ أيام` 
-                : `${stats.completedDaysThisWeek} / 5 days`}
+                ? `${stats.completedDaysThisWeek} / ${totalDaysAr}` 
+                : `${stats.completedDaysThisWeek} / ${totalDays} days`}
             </span>
           </div>
         </Card>
@@ -178,17 +211,49 @@ export function Dashboard() {
         {/* Recent video thumbnail card */}
         <Card className="flex flex-col justify-between bg-[#111111] border border-[#1F1F1F] p-6 relative overflow-hidden group">
           <div className="space-y-3">
-            <span className="text-xs font-bold text-[#666666] uppercase tracking-wider block">{language === 'ar' ? 'أحدث الفيديوهات التعليمية' : 'Latest Instruction Video'}</span>
-            <div className="aspect-video relative rounded-lg overflow-hidden bg-black flex items-center justify-center border border-[#1F1F1F] group cursor-pointer" onClick={() => navigate('/dashboard/videos')}>
-              <img src="https://img.youtube.com/vi/y7I6qX5tC_4/mqdefault.jpg" alt="Video" className="w-full h-full object-cover opacity-50 group-hover:scale-105 transition-transform duration-500" />
-              <div className="absolute inset-0 bg-[#E8FF00]/5 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-              <Play size={32} className="absolute text-[#E8FF00] drop-shadow-[0_0_10px_rgba(232,255,0,0.5)]" fill="#E8FF00" />
-            </div>
-            <h4 className="font-bebas text-lg text-[#F5F5F5] truncate leading-tight mt-1">
-              {language === 'ar' ? 'طريقة أداء تمرين الاسكوات بالبار بشكل صحيح' : 'Proper Barbell Squat Mechanics'}
-            </h4>
+            <span className="text-xs font-bold text-[#666666] uppercase tracking-wider block">
+              {language === 'ar' ? 'أحدث الفيديوهات التعليمية' : 'Latest Instruction Video'}
+            </span>
+            {latestVideo ? (
+              <>
+                <div 
+                  className="aspect-video relative rounded-lg overflow-hidden bg-black flex items-center justify-center border border-[#1F1F1F] group cursor-pointer" 
+                  onClick={() => navigate(`/dashboard/videos/${latestVideo.youtube_id}`)}
+                >
+                  <img 
+                    src={`https://img.youtube.com/vi/${latestVideo.youtube_id}/mqdefault.jpg`} 
+                    alt={latestVideo.title} 
+                    className="w-full h-full object-cover opacity-50 group-hover:scale-105 transition-transform duration-500" 
+                  />
+                  <div className="absolute inset-0 bg-[#E8FF00]/5 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+                  <Play size={32} className="absolute text-[#E8FF00] drop-shadow-[0_0_10px_rgba(232,255,0,0.5)]" fill="#E8FF00" />
+                </div>
+                <h4 className="font-bebas text-lg text-[#F5F5F5] truncate leading-tight mt-1">
+                  {latestVideo.title}
+                </h4>
+              </>
+            ) : (
+              <>
+                <div className="aspect-video relative rounded-lg overflow-hidden bg-black/40 flex flex-col items-center justify-center border border-dashed border-[#1F1F1F] gap-2 p-4 text-center">
+                  <span className="text-[10px] text-[#666666] font-bold uppercase tracking-wider">
+                    {language === 'ar' ? 'المكتبة فارغة' : 'Library Empty'}
+                  </span>
+                  <span className="text-[10px] text-[#444444] font-medium leading-relaxed">
+                    {language === 'ar' ? 'سيقوم الكوتش مصعب بإضافة فيديوهات تعليمية قريباً.' : 'Coach Mosab will upload instructional videos soon.'}
+                  </span>
+                </div>
+                <h4 className="font-bebas text-lg text-[#555555] truncate leading-tight mt-1">
+                  {language === 'ar' ? 'لا توجد فيديوهات بعد' : 'No Videos Available Yet'}
+                </h4>
+              </>
+            )}
           </div>
-          <Button variant="outline" size="sm" onClick={() => navigate('/dashboard/videos')} className="mt-4 border-[#1F1F1F] hover:bg-[#161616] font-bebas uppercase tracking-wider text-xs py-2">
+          <Button 
+            variant="outline" 
+            size="sm" 
+            onClick={() => navigate('/dashboard/videos')} 
+            className="mt-4 border-[#1F1F1F] hover:bg-[#161616] font-bebas uppercase tracking-wider text-xs py-2"
+          >
             {language === 'ar' ? 'فتح المكتبة' : 'OPEN LIBRARY'}
           </Button>
         </Card>

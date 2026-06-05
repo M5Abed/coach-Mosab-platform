@@ -47,9 +47,9 @@ export function Payment() {
   
   // Payment config methods fetched
   const [methods] = useState([
-    { id: 1, name: 'Instapay', accountName: 'Mosab El-Sayed', number: 'mosabel@instapay', logo: 'I' },
-    { id: 2, name: 'Vodafone Cash', accountName: 'Ahmed Mohamed', number: '01023456789', logo: 'V' },
-    { id: 3, name: 'Orange Money', accountName: 'Ahmed Mohamed', number: '01234567890', logo: 'O' }
+    { id: 1, name: 'Instapay', accountName: 'Mosab El-Sayed', number: '01050507775', logo: 'I' },
+    { id: 2, name: 'Vodafone Cash', accountName: 'Mosab El-Sayed', number: '01050507775', logo: 'V' },
+    { id: 3, name: 'Orange Money', accountName: 'Mosab El-Sayed', number: '01050507775', logo: 'O' }
   ])
   const [selectedMethod, setSelectedMethod] = useState(methods[0])
 

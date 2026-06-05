@@ -1,23 +1,43 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { Card } from '../../components/ui/Card'
 import { Button } from '../../components/ui/Button'
 import { Badge } from '../../components/ui/Badge'
 import { toast } from '../../store/toastStore'
 import { Plus, Trash2, Video, Calendar, Save } from 'lucide-react'
+import { supabase } from '../../lib/supabase'
 
 export function VideoManager() {
-  const [videos, setVideos] = useState([
-    { id: 1, title: 'Proper Barbell Squat Mechanics', youtubeId: 'y7I6qX5tC_4', category: 'Strength', views: 340, active: true },
-    { id: 2, title: 'How to Meal Prep for Fat Loss', youtubeId: 'hJ4YFf3K8hQ', category: 'Nutrition', views: 280, active: true },
-    { id: 3, title: 'Full Body Dynamic Warmup', youtubeId: 'H2N1f1h4yA0', category: 'Mobility', views: 190, active: false }
-  ])
+  const [videos, setVideos] = useState([])
+  const [loading, setLoading] = useState(true)
 
   const [title, setTitle] = useState('')
   const [youtubeId, setYoutubeId] = useState('')
   const [category, setCategory] = useState('Strength')
   const [scheduleDate, setScheduleDate] = useState('')
 
-  const handleAddVideo = (e) => {
+  const fetchVideos = async () => {
+    setLoading(true)
+    try {
+      const { data, error } = await supabase
+        .from('videos')
+        .select('*')
+        .order('created_at', { ascending: false })
+
+      if (error) throw error
+      setVideos(data || [])
+    } catch (err) {
+      console.error('Error fetching videos:', err)
+      toast.error('Failed to load videos from directory.')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    fetchVideos()
+  }, [])
+
+  const handleAddVideo = async (e) => {
     e.preventDefault()
     if (!title || !youtubeId) {
       toast.error('Please enter the Video Title and YouTube ID.')
@@ -25,25 +45,46 @@ export function VideoManager() {
     }
 
     const newVid = {
-      id: Date.now(),
       title,
-      youtubeId,
+      youtube_id: youtubeId,
       category,
       views: 0,
       active: true,
       scheduled: scheduleDate || null
     }
 
-    setVideos([newVid, ...videos])
-    setTitle('')
-    setYoutubeId('')
-    setScheduleDate('')
-    toast.success('Video instruction added to unlisted directory!')
+    try {
+      const { data, error } = await supabase
+        .from('videos')
+        .insert([newVid])
+        .select()
+
+      if (error) throw error
+      setVideos(prev => [data[0], ...prev])
+      setTitle('')
+      setYoutubeId('')
+      setScheduleDate('')
+      toast.success('Video instruction added to unlisted directory!')
+    } catch (err) {
+      console.error('Error adding video:', err)
+      toast.error(err.message || 'Failed to add video.')
+    }
   }
 
-  const handleDelete = (id) => {
-    setVideos(prev => prev.filter(v => v.id !== id))
-    toast.success('Video removed from library.')
+  const handleDelete = async (id) => {
+    try {
+      const { error } = await supabase
+        .from('videos')
+        .delete()
+        .eq('id', id)
+
+      if (error) throw error
+      setVideos(prev => prev.filter(v => v.id !== id))
+      toast.success('Video removed from library.')
+    } catch (err) {
+      console.error('Error deleting video:', err)
+      toast.error('Failed to delete video.')
+    }
   }
 
   return (
@@ -70,7 +111,7 @@ export function VideoManager() {
                 <div className="space-y-3">
                   <div className="aspect-video relative rounded-lg overflow-hidden bg-black flex items-center justify-center border border-[#1F1F1F]">
                     <img 
-                      src={`https://img.youtube.com/vi/${vid.youtubeId}/mqdefault.jpg`} 
+                      src={`https://img.youtube.com/vi/${vid.youtube_id}/mqdefault.jpg`} 
                       alt="Thumbnail" 
                       className="w-full h-full object-cover opacity-60" 
                     />

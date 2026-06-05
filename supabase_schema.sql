@@ -112,3 +112,24 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;
 CREATE TRIGGER on_auth_user_created
   AFTER INSERT ON auth.users
   FOR EACH ROW EXECUTE FUNCTION public.handle_new_user();
+
+-- 10. Create Videos Table
+CREATE TABLE public.videos (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  title TEXT NOT NULL,
+  youtube_id TEXT NOT NULL,
+  category TEXT NOT NULL,
+  views INTEGER DEFAULT 0 NOT NULL,
+  active BOOLEAN DEFAULT true NOT NULL,
+  scheduled DATE,
+  duration TEXT DEFAULT '10:00' NOT NULL,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT now() NOT NULL
+);
+
+ALTER TABLE public.videos ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Allow select for all authenticated" ON public.videos
+  FOR SELECT USING (auth.role() = 'authenticated');
+
+CREATE POLICY "Allow all actions for admin" ON public.videos
+  FOR ALL USING (public.is_admin());

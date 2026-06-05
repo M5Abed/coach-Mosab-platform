@@ -8,7 +8,7 @@ export function AdminDashboard() {
   const [stats, setStats] = useState([
     { name: 'Active Subscribers', value: '0', icon: <Users size={20} />, color: 'text-[#E8FF00] bg-[#E8FF00]/10 border-[#E8FF00]/25' },
     { name: 'Pending Payments', value: '0', icon: <CreditCard size={20} />, color: 'text-[#FF8C00] bg-[#FF8C00]/10 border-[#FF8C00]/25' },
-    { name: 'Videos Uploaded', value: '6', icon: <Video size={20} />, color: 'text-[#4DA6FF] bg-[#4DA6FF]/10 border-[#4DA6FF]/25' }
+    { name: 'Videos Uploaded', value: '0', icon: <Video size={20} />, color: 'text-[#4DA6FF] bg-[#4DA6FF]/10 border-[#4DA6FF]/25' }
   ])
 
   const [signups, setSignups] = useState([])
@@ -18,20 +18,28 @@ export function AdminDashboard() {
     setLoading(true)
     try {
       // 1. Fetch counts
-      const { data: profiles, error } = await supabase
-        .from('profiles')
-        .select('subscription_status, full_name, plan_duration, updated_at, email')
-        .neq('role', 'admin')
+      const [profilesRes, videosRes] = await Promise.all([
+        supabase
+          .from('profiles')
+          .select('subscription_status, full_name, plan_duration, updated_at, email')
+          .neq('role', 'admin'),
+        supabase
+          .from('videos')
+          .select('*', { count: 'exact', head: true })
+      ])
 
-      if (error) throw error
+      if (profilesRes.error) throw profilesRes.error
+      if (videosRes.error) throw videosRes.error
 
+      const profiles = profilesRes.data || []
       const activeCount = profiles.filter(p => p.subscription_status === 'active').length
       const pendingCount = profiles.filter(p => p.subscription_status === 'pending').length
+      const videoCount = videosRes.count || 0
 
       setStats([
         { name: 'Active Subscribers', value: String(activeCount), icon: <Users size={20} />, color: 'text-[#E8FF00] bg-[#E8FF00]/10 border-[#E8FF00]/25' },
         { name: 'Pending Payments', value: String(pendingCount), icon: <CreditCard size={20} />, color: 'text-[#FF8C00] bg-[#FF8C00]/10 border-[#FF8C00]/25' },
-        { name: 'Videos Uploaded', value: '6', icon: <Video size={20} />, color: 'text-[#4DA6FF] bg-[#4DA6FF]/10 border-[#4DA6FF]/25' }
+        { name: 'Videos Uploaded', value: String(videoCount), icon: <Video size={20} />, color: 'text-[#4DA6FF] bg-[#4DA6FF]/10 border-[#4DA6FF]/25' }
       ])
 
       // 2. Map recent enrollments

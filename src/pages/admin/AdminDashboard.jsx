@@ -21,7 +21,7 @@ export function AdminDashboard() {
       const { data: profiles, error } = await supabase
         .from('profiles')
         .select('subscription_status, full_name, plan_duration, updated_at, email')
-        .neq('email', 'admin@coachmosab.com')
+        .neq('role', 'admin')
 
       if (error) throw error
 

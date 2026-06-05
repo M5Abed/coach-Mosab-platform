@@ -82,10 +82,19 @@ export function Progress() {
     }
 
     setSubmitting(true)
+
+    // Duplicate guard: prevent multiple check-ins on the same day
+    const todayStr = (() => { const now = new Date(); return `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}` })()
+    if (checkIns.some(c => c.date === todayStr)) {
+      toast.error('You have already submitted a check-in today.')
+      setSubmitting(false)
+      return
+    }
+
     setTimeout(() => {
       const newCheckIn = {
         id: Date.now(),
-        date: new Date().toISOString().split('T')[0],
+        date: (() => { const now = new Date(); return `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}` })(),
         weight: parseFloat(weight),
         notes,
         photoUrl: photo ? URL.createObjectURL(photo) : null
@@ -127,7 +136,7 @@ export function Progress() {
     for (let i = 83; i >= 0; i--) {
       const d = new Date()
       d.setDate(today.getDate() - i)
-      const dateStr = d.toISOString().split('T')[0]
+      const dateStr = (() => { return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}` })()
       const isActive = stats.completedDates.includes(dateStr)
       list.push({
         active: isActive,

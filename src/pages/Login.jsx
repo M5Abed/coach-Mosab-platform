@@ -28,7 +28,9 @@ export function Login() {
     try {
       const data = await login(email, password)
       toast.success('Successfully logged in!')
-      if (data.user?.role === 'admin' || email === 'admin@coachmosab.com' || email === 'mohamed.abed6655@gmail.com') {
+      // Use the DB-driven role from the auth store
+      const userRole = useAuthStore.getState().user?.role
+      if (userRole === 'admin') {
         navigate('/admin')
       } else {
         navigate('/dashboard')

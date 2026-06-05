@@ -25,8 +25,8 @@ export function Settings() {
       setLevel(user.fitness_level || 'beginner')
     }
   }, [user?.id]) // re-sync only when user identity changes
-  const [oldPassword, setOldPassword] = useState('')
   const [newPassword, setNewPassword] = useState('')
+  const [confirmPassword, setConfirmPassword] = useState('')
 
   const handleUpdateProfile = async (e) => {
     e.preventDefault()
@@ -46,12 +46,20 @@ export function Settings() {
 
   const handlePasswordSubmit = async (e) => {
     e.preventDefault()
+    if (newPassword.length < 8) {
+      toast.error('Password must be at least 8 characters long.')
+      return
+    }
+    if (newPassword !== confirmPassword) {
+      toast.error('Passwords do not match.')
+      return
+    }
     try {
       const { error } = await supabase.auth.updateUser({ password: newPassword })
       if (error) throw error
       toast.success('Password updated successfully!')
-      setOldPassword('')
       setNewPassword('')
+      setConfirmPassword('')
     } catch (err) {
       toast.error(err.message || 'Password update failed.')
     }
@@ -212,26 +220,28 @@ export function Settings() {
               
               <form onSubmit={handlePasswordSubmit} className="space-y-4">
                 <div className="space-y-1.5">
-                  <label className="text-xs font-bold text-[#666666] uppercase tracking-wider block">Current Password</label>
-                  <input
-                    type="password"
-                    value={oldPassword}
-                    onChange={(e) => setOldPassword(e.target.value)}
-                    placeholder="••••••••"
-                    className="w-full bg-[#161616] border border-[#1F1F1F] rounded-lg py-2.5 px-4 text-sm text-[#F5F5F5] outline-none"
-                    required
-                  />
-                </div>
-
-                <div className="space-y-1.5">
                   <label className="text-xs font-bold text-[#666666] uppercase tracking-wider block">New Password</label>
                   <input
                     type="password"
                     value={newPassword}
                     onChange={(e) => setNewPassword(e.target.value)}
-                    placeholder="••••••••"
+                    placeholder="Minimum 8 characters"
                     className="w-full bg-[#161616] border border-[#1F1F1F] rounded-lg py-2.5 px-4 text-sm text-[#F5F5F5] outline-none"
                     required
+                    minLength={8}
+                  />
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="text-xs font-bold text-[#666666] uppercase tracking-wider block">Confirm New Password</label>
+                  <input
+                    type="password"
+                    value={confirmPassword}
+                    onChange={(e) => setConfirmPassword(e.target.value)}
+                    placeholder="Re-enter new password"
+                    className="w-full bg-[#161616] border border-[#1F1F1F] rounded-lg py-2.5 px-4 text-sm text-[#F5F5F5] outline-none"
+                    required
+                    minLength={8}
                   />
                 </div>
 

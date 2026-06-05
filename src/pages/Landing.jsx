@@ -18,6 +18,7 @@ import { Card } from '../components/ui/Card'
 import { useLanguageStore } from '../store/languageStore'
 import { translations } from '../utils/translations'
 import { LanguageSelector } from '../components/ui/LanguageSelector'
+import { useAuthStore } from '../store/authStore'
 
 // Animated intersection count-up counter component
 function Counter({ endValue, duration = 1500, suffix = "" }) {
@@ -70,6 +71,7 @@ export function Landing() {
   const { language } = useLanguageStore()
   const t = translations[language]
   const [currentTestimonial, setCurrentTestimonial] = useState(0)
+  const user = useAuthStore((state) => state.user)
 
 
   const testimonials = language === 'ar' ? [
@@ -458,7 +460,14 @@ export function Landing() {
 
                 <Button 
                   variant={tier.popular ? 'primary' : 'outline'}
-                  onClick={() => navigate(`/payment?plan=${tier.duration}&price=${tier.price.replace(',', '')}`)}
+                  onClick={() => {
+                    const cleanPrice = tier.price.replace(',', '')
+                    if (user) {
+                      navigate(`/payment?plan=${tier.duration}&price=${cleanPrice}`)
+                    } else {
+                      navigate(`/register?plan=${tier.duration}&price=${cleanPrice}`)
+                    }
+                  }}
                   className="mt-8 w-full font-bebas uppercase tracking-wider text-base"
                 >
                   {t.getStarted} <ArrowRight size={16} className="ml-2" />

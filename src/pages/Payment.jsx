@@ -1,5 +1,5 @@
 import React, { useState } from 'react'
-import { Link, useNavigate, useSearchParams } from 'react-router-dom'
+import { Link, useNavigate, useSearchParams, Navigate } from 'react-router-dom'
 import { toast } from '../store/toastStore'
 import { useAuthStore } from '../store/authStore'
 import { Button } from '../components/ui/Button'
@@ -17,6 +17,12 @@ export function Payment() {
   const user = useAuthStore((state) => state.user)
   const { language } = useLanguageStore()
   const t = translations[language]
+
+  // Auth guard: redirect unauthenticated users to login
+  if (!user) {
+    return <Navigate to="/login" replace />
+  }
+
 
   // If coming from landing with a pre-selected plan use it, otherwise null to show selector
   const urlPlan = searchParams.get('plan')
@@ -49,7 +55,10 @@ export function Payment() {
 
   // Step 2 Form States
   const [amount, setAmount] = useState(planPrice)
-  const [date, setDate] = useState(new Date().toISOString().split('T')[0])
+  const [date, setDate] = useState(() => {
+    const now = new Date()
+    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`
+  })
   const [phone, setPhone] = useState('')
   const [notes, setNotes] = useState('')
   const [screenshot, setScreenshot] = useState(null)
@@ -353,7 +362,6 @@ export function Payment() {
                   <input
                     type="number"
                     value={amount}
-                    onChange={(e) => setAmount(e.target.value)}
                     className="w-full bg-[#161616] border border-[#1F1F1F] rounded-lg py-2 pl-9 pr-4 rtl:pl-4 rtl:pr-9 text-sm text-[#F5F5F5] outline-none"
                     required
                     readOnly

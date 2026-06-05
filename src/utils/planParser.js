@@ -11,7 +11,8 @@ export function parseWorkoutPlan(plan) {
   // 2. Handle string primitive input (e.g., text plan or stringified JSON)
   if (typeof plan === 'string') {
     const trimmed = plan.trim()
-    if (!trimmed || trimmed.toUpperCase().includes('NO WORKOUT') || trimmed.toUpperCase().includes('NO PLAN') || trimmed.toUpperCase().includes('NOT ASSIGNED') || trimmed.toUpperCase().includes('NONE')) {
+    const SENTINEL_VALUES = ['NONE', 'NO PLAN', 'NO WORKOUT', 'NOT ASSIGNED']
+    if (!trimmed || SENTINEL_VALUES.includes(trimmed.toUpperCase())) {
       return null
     }
     // Check if it's a JSON string
@@ -218,7 +219,8 @@ export function parseNutritionPlan(plan) {
   // 2. Handle string primitive input (e.g., text plan or stringified JSON)
   if (typeof plan === 'string') {
     const trimmed = plan.trim()
-    if (!trimmed || trimmed.toUpperCase().includes('NO NUTRITION') || trimmed.toUpperCase().includes('NO PLAN') || trimmed.toUpperCase().includes('NOT ASSIGNED') || trimmed.toUpperCase().includes('NONE')) {
+    const SENTINEL_VALUES = ['NONE', 'NO PLAN', 'NO NUTRITION', 'NOT ASSIGNED']
+    if (!trimmed || SENTINEL_VALUES.includes(trimmed.toUpperCase())) {
       return null
     }
     // Check if it's a JSON string

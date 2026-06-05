@@ -28,7 +28,7 @@ export function ManagePayments() {
         .from('profiles')
         .select('id, full_name, email, phone, subscription_status, plan_duration, rejection_reason, updated_at')
         .in('subscription_status', ['pending', 'active', 'rejected'])
-        .neq('email', 'admin@coachmosab.com')  // exclude admin profile
+        .neq('role', 'admin')  // exclude admin profiles
         .order('updated_at', { ascending: false })
 
       if (error) throw error

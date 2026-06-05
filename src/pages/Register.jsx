@@ -1,5 +1,5 @@
 import React, { useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { useAuthStore } from '../store/authStore'
 import { toast } from '../store/toastStore'
 import { Button } from '../components/ui/Button'
@@ -21,6 +21,10 @@ export function Register() {
   const [password, setPassword] = useState('')
   const [fitnessLevel, setFitnessLevel] = useState('beginner')
 
+  const [searchParams] = useSearchParams()
+  const plan = searchParams.get('plan')
+  const price = searchParams.get('price')
+
   const handleSubmit = async (e) => {
     e.preventDefault()
     
@@ -34,7 +38,11 @@ export function Register() {
     try {
       await register(email, password, fullName, phone, fitnessLevel)
       toast.success('Registration successful!')
-      navigate('/payment')
+      if (plan && price) {
+        navigate(`/payment?plan=${plan}&price=${price}`)
+      } else {
+        navigate('/payment')
+      }
     } catch (err) {
       toast.error(err.message || 'Registration failed.')
     }

@@ -58,7 +58,7 @@ export const useAuthStore = create((set, get) => ({
             id: session.user.id,
             email: session.user.email,
             full_name: session.user.user_metadata?.full_name || 'Fitness Member',
-            role: session.user.email === 'admin@coachmosab.com' ? 'admin' : 'subscriber',
+            role: 'subscriber',
             subscription_status: 'inactive'
           },
           initialized: true,
@@ -88,14 +88,6 @@ export const useAuthStore = create((set, get) => ({
       // Real login succeeded — fetch real profile
       await get().setSession(data.session, true)
 
-      // Override role/status locally if this is a known admin email
-      if (email === 'admin@coachmosab.com' || email === 'mohamed.abed6655@gmail.com') {
-        set(state => ({
-          user: state.user
-            ? { ...state.user, role: 'admin', subscription_status: 'active' }
-            : state.user
-        }))
-      }
       return data
     }
   },
@@ -171,12 +163,6 @@ export const useAuthStore = create((set, get) => ({
 
     set({ loading: true })
     
-    // If it's a mock session, update local store only
-    if (user.id.startsWith('admin-id') || user.id.startsWith('user-id')) {
-      set({ user: { ...user, ...updates }, loading: false })
-      return
-    }
-
     const { error } = await supabase
       .from('profiles')
       .update(updates)

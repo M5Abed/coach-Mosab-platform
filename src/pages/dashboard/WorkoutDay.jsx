@@ -131,7 +131,7 @@ export function WorkoutDay() {
   let exercises = []
   if (workoutPlan?.exercises && workoutPlan.exercises.length > 0) {
     const targetDay = dayId === 'today' ? 1 : Number(dayId)
-    const filteredRaw = workoutPlan.exercises.filter(ex => !ex.day || Number(ex.day) === targetDay)
+    const filteredRaw = workoutPlan.exercises.filter(ex => Number(ex.day || 1) === targetDay)
 
     exercises = filteredRaw.map((ex, index) => {
       const nameLower = (ex.name || '').toLowerCase()

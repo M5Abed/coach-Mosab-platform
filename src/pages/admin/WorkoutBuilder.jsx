@@ -315,7 +315,7 @@ export function WorkoutBuilder() {
                   <input
                     type="number"
                     value={exSets}
-                    onChange={(e) => setExSets(e.target.value)}
+                    onChange={(e) => setExSets(Number(e.target.value) || 1)}
                     className="w-full bg-[#161616] border border-[#1F1F1F] rounded-lg py-2 px-3 text-sm text-[#F5F5F5] outline-none"
                     required
                   />

@@ -14,13 +14,13 @@ export function TopBar() {
       <div className="flex items-center gap-3">
         <LanguageSelector />
         {user && (
-          <div className="w-8 h-8 rounded-full bg-[#161616] border border-[#1F1F1F] flex items-center justify-center font-bebas text-sm text-[#E8FF00] overflow-hidden">
+          <Link to="/dashboard/settings" className="w-8 h-8 rounded-full bg-[#161616] border border-[#1F1F1F] flex items-center justify-center font-bebas text-sm text-[#E8FF00] overflow-hidden active:scale-95 transition-transform hover:opacity-80">
             {user.avatar_url ? (
               <img src={user.avatar_url} alt={user.full_name} className="w-full h-full object-cover" />
             ) : (
               user.full_name?.charAt(0).toUpperCase()
             )}
-          </div>
+          </Link>
         )}
       </div>
     </header>

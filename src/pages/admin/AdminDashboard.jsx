@@ -3,12 +3,15 @@ import { Link } from 'react-router-dom'
 import { Card } from '../../components/ui/Card'
 import { Badge } from '../../components/ui/Badge'
 import { supabase } from '../../lib/supabase'
-import { Users, CreditCard, Video, RefreshCw } from 'lucide-react'
+import { Users, CreditCard, Video, RefreshCw, DollarSign, TrendingUp, Calendar } from 'lucide-react'
 
 export function AdminDashboard() {
   const [stats, setStats] = useState([
     { name: 'Active Subscribers', value: '0', icon: <Users size={20} />, color: 'text-[#E8FF00] bg-[#E8FF00]/10 border-[#E8FF00]/25', link: '/admin/clients' },
     { name: 'Pending Payments', value: '0', icon: <CreditCard size={20} />, color: 'text-[#FF8C00] bg-[#FF8C00]/10 border-[#FF8C00]/25', link: '/admin/payments' },
+    { name: 'Total Revenue', value: '0 EGP', icon: <DollarSign size={20} />, color: 'text-[#00E5FF] bg-[#00E5FF]/10 border-[#00E5FF]/25', link: '/admin/payments' },
+    { name: 'This Month', value: '0 EGP', icon: <TrendingUp size={20} />, color: 'text-[#F5F5F5] bg-[#F5F5F5]/5 border-[#1F1F1F]', link: '/admin/payments' },
+    { name: 'Last Month', value: '0 EGP', icon: <Calendar size={20} />, color: 'text-[#666666] bg-[#111111] border-[#1F1F1F]', link: '/admin/payments' },
     { name: 'Videos Uploaded', value: '0', icon: <Video size={20} />, color: 'text-[#4DA6FF] bg-[#4DA6FF]/10 border-[#4DA6FF]/25', link: '/admin/videos' }
   ])
 
@@ -37,9 +40,47 @@ export function AdminDashboard() {
       const pendingCount = profiles.filter(p => p.subscription_status === 'pending').length
       const videoCount = videosRes.count || 0
 
+      // Calculate revenue stats
+      const now = new Date()
+      const currentYear = now.getFullYear()
+      const currentMonth = now.getMonth()
+
+      let totalRevenue = 0
+      let thisMonthRevenue = 0
+      let lastMonthRevenue = 0
+
+      profiles.forEach(p => {
+        if (p.subscription_status === 'active') {
+          const amount = p.plan_duration === '1' ? 499 : p.plan_duration === '2' ? 899 : p.plan_duration === '3' ? 1299 : 0
+          totalRevenue += amount
+
+          if (p.updated_at) {
+            const pDate = new Date(p.updated_at)
+            if (!isNaN(pDate.getTime())) {
+              const pYear = pDate.getFullYear()
+              const pMonth = pDate.getMonth()
+
+              // This Month
+              if (pYear === currentYear && pMonth === currentMonth) {
+                thisMonthRevenue += amount
+              }
+              // Last Month
+              const targetLastMonth = currentMonth === 0 ? 11 : currentMonth - 1
+              const targetLastYear = currentMonth === 0 ? currentYear - 1 : currentYear
+              if (pYear === targetLastYear && pMonth === targetLastMonth) {
+                lastMonthRevenue += amount
+              }
+            }
+          }
+        }
+      })
+
       setStats([
         { name: 'Active Subscribers', value: String(activeCount), icon: <Users size={20} />, color: 'text-[#E8FF00] bg-[#E8FF00]/10 border-[#E8FF00]/25', link: '/admin/clients' },
         { name: 'Pending Payments', value: String(pendingCount), icon: <CreditCard size={20} />, color: 'text-[#FF8C00] bg-[#FF8C00]/10 border-[#FF8C00]/25', link: '/admin/payments' },
+        { name: 'Total Revenue', value: `${totalRevenue.toLocaleString()} EGP`, icon: <DollarSign size={20} />, color: 'text-[#00E5FF] bg-[#00E5FF]/10 border-[#00E5FF]/25', link: '/admin/payments' },
+        { name: 'This Month', value: `${thisMonthRevenue.toLocaleString()} EGP`, icon: <TrendingUp size={20} />, color: 'text-[#F5F5F5] bg-[#F5F5F5]/5 border-[#1F1F1F]', link: '/admin/payments' },
+        { name: 'Last Month', value: `${lastMonthRevenue.toLocaleString()} EGP`, icon: <Calendar size={20} />, color: 'text-[#666666] bg-[#111111] border-[#1F1F1F]', link: '/admin/payments' },
         { name: 'Videos Uploaded', value: String(videoCount), icon: <Video size={20} />, color: 'text-[#4DA6FF] bg-[#4DA6FF]/10 border-[#4DA6FF]/25', link: '/admin/videos' }
       ])
 
@@ -87,7 +128,7 @@ export function AdminDashboard() {
       </div>
 
       {/* Stats grid */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
         {stats.map((stat) => (
           <Link key={stat.name} to={stat.link} className="block transition-transform duration-200 hover:-translate-y-1">
             <Card className="flex items-center gap-4 h-full cursor-pointer hover:border-[#E8FF00]/30 transition-colors">

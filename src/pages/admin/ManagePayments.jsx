@@ -5,7 +5,7 @@ import { Badge } from '../../components/ui/Badge'
 import { Modal } from '../../components/ui/Modal'
 import { toast } from '../../store/toastStore'
 import { supabase } from '../../lib/supabase'
-import { Check, X, Phone, Calendar, ZoomIn, DollarSign, RefreshCw, User } from 'lucide-react'
+import { Check, X, Phone, Calendar, ZoomIn, DollarSign, RefreshCw, User, TrendingUp } from 'lucide-react'
 
 export function ManagePayments() {
   const [payments, setPayments] = useState([])
@@ -19,6 +19,14 @@ export function ManagePayments() {
   const [rejectingPayment, setRejectingPayment] = useState(null)
   const [rejectReason, setRejectReason] = useState('Blurred Screenshot')
   const [customReason, setCustomReason] = useState('')
+
+  const [stats, setStats] = useState({
+    totalRevenue: 0,
+    thisMonthRevenue: 0,
+    lastMonthRevenue: 0,
+    activeSubscribers: 0,
+    pendingSubscribers: 0
+  })
 
   const fetchPayments = useCallback(async () => {
     setLoading(true)
@@ -36,7 +44,7 @@ export function ManagePayments() {
       console.log('[ManagePayments] Fetched', data?.length, 'profiles')
 
       // Map profile rows to payment display format
-      setPayments((data || []).map(p => ({
+      const mappedPayments = (data || []).map(p => ({
         id: p.id,
         clientName: p.full_name || 'Unknown',
         email: p.email,
@@ -47,8 +55,59 @@ export function ManagePayments() {
         status: p.subscription_status,
         plan: p.plan_duration || '—',
         rejectionReason: p.rejection_reason || '',
-        screenshotUrl: p.payment_screenshot_url || null
-      })))
+        screenshotUrl: p.payment_screenshot_url || null,
+        updatedAtRaw: p.updated_at || ''
+      }))
+
+      setPayments(mappedPayments)
+
+      // Calculate stats
+      const now = new Date()
+      const currentYear = now.getFullYear()
+      const currentMonth = now.getMonth()
+
+      let total = 0
+      let thisMonth = 0
+      let lastMonth = 0
+      let activeCount = 0
+      let pendingCount = 0
+
+      mappedPayments.forEach(p => {
+        if (p.status === 'active') {
+          activeCount++
+          const amt = p.amount === '499' ? 499 : p.amount === '899' ? 899 : p.amount === '1299' ? 1299 : 0
+          total += amt
+
+          if (p.updatedAtRaw) {
+            const pDate = new Date(p.updatedAtRaw)
+            if (!isNaN(pDate.getTime())) {
+              const pYear = pDate.getFullYear()
+              const pMonth = pDate.getMonth()
+
+              // This Month
+              if (pYear === currentYear && pMonth === currentMonth) {
+                thisMonth += amt
+              }
+              // Last Month
+              const targetLastMonth = currentMonth === 0 ? 11 : currentMonth - 1
+              const targetLastYear = currentMonth === 0 ? currentYear - 1 : currentYear
+              if (pYear === targetLastYear && pMonth === targetLastMonth) {
+                lastMonth += amt
+              }
+            }
+          }
+        } else if (p.status === 'pending') {
+          pendingCount++
+        }
+      })
+
+      setStats({
+        totalRevenue: total,
+        thisMonthRevenue: thisMonth,
+        lastMonthRevenue: lastMonth,
+        activeSubscribers: activeCount,
+        pendingSubscribers: pendingCount
+      })
     } catch (err) {
       console.error('[ManagePayments] Fetch error:', err)
       setFetchError(err.message)
@@ -152,6 +211,59 @@ export function ManagePayments() {
             </button>
           </div>
         </div>
+      </div>
+
+      {/* Stats Cards Row */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+        <Card className="p-4 bg-[#111111]/80 backdrop-blur-sm border border-[#1F1F1F] flex items-center justify-between transition-transform duration-200 hover:-translate-y-1">
+          <div className="space-y-1">
+            <span className="text-[10px] text-[#666666] font-bold uppercase tracking-wider block">Total Revenue</span>
+            <span className="text-2xl font-bebas text-[#E8FF00] tracking-wide">{stats.totalRevenue.toLocaleString()} EGP</span>
+          </div>
+          <div className="p-2.5 rounded-lg bg-[#E8FF00]/10 border border-[#E8FF00]/25 text-[#E8FF00]">
+            <DollarSign size={20} />
+          </div>
+        </Card>
+
+        <Card className="p-4 bg-[#111111]/80 backdrop-blur-sm border border-[#1F1F1F] flex items-center justify-between transition-transform duration-200 hover:-translate-y-1">
+          <div className="space-y-1">
+            <span className="text-[10px] text-[#666666] font-bold uppercase tracking-wider block">This Month</span>
+            <span className="text-2xl font-bebas text-[#F5F5F5] tracking-wide">{stats.thisMonthRevenue.toLocaleString()} EGP</span>
+          </div>
+          <div className="p-2.5 rounded-lg bg-[#F5F5F5]/5 border border-[#1F1F1F] text-[#666666]">
+            <TrendingUp size={20} />
+          </div>
+        </Card>
+
+        <Card className="p-4 bg-[#111111]/80 backdrop-blur-sm border border-[#1F1F1F] flex items-center justify-between transition-transform duration-200 hover:-translate-y-1">
+          <div className="space-y-1">
+            <span className="text-[10px] text-[#666666] font-bold uppercase tracking-wider block">Last Month</span>
+            <span className="text-2xl font-bebas text-[#666666] tracking-wide">{stats.lastMonthRevenue.toLocaleString()} EGP</span>
+          </div>
+          <div className="p-2.5 rounded-lg bg-[#111111] border border-[#1F1F1F] text-[#666666]">
+            <Calendar size={20} />
+          </div>
+        </Card>
+
+        <Card className="p-4 bg-[#111111]/80 backdrop-blur-sm border border-[#1F1F1F] flex items-center justify-between transition-transform duration-200 hover:-translate-y-1">
+          <div className="space-y-1">
+            <span className="text-[10px] text-[#666666] font-bold uppercase tracking-wider block">Active Clients</span>
+            <span className="text-2xl font-bebas text-[#00E5FF] tracking-wide">{stats.activeSubscribers} Active</span>
+          </div>
+          <div className="p-2.5 rounded-lg bg-[#00E5FF]/10 border border-[#00E5FF]/25 text-[#00E5FF]">
+            <User size={20} />
+          </div>
+        </Card>
+
+        <Card className="p-4 bg-[#111111]/80 backdrop-blur-sm border border-[#1F1F1F] flex items-center justify-between transition-transform duration-200 hover:-translate-y-1">
+          <div className="space-y-1">
+            <span className="text-[10px] text-[#666666] font-bold uppercase tracking-wider block">Pending Review</span>
+            <span className="text-2xl font-bebas text-[#FF8C00] tracking-wide">{stats.pendingSubscribers} Pending</span>
+          </div>
+          <div className="p-2.5 rounded-lg bg-[#FF8C00]/10 border border-[#FF8C00]/25 text-[#FF8C00]">
+            <RefreshCw size={20} className={loading ? 'animate-spin' : ''} />
+          </div>
+        </Card>
       </div>
 
       {/* Error Banner — shown when DB query fails (e.g. mock session / no JWT) */}

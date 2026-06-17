@@ -60,8 +60,18 @@ function MealCard({ meal, index, language }) {
         <div className="px-5 py-3 space-y-2">
           {meal.foods.map((food, fi) => (
             <div key={fi} className="flex items-center justify-between py-1.5 border-b border-[#1A1A1A] last:border-0">
-              <span className="text-xs text-[#CCCCCC] font-semibold">{food.name}</span>
-              <span className="text-[10px] font-bold text-[#666666] uppercase">{food.qty}</span>
+              <div className="min-w-0 flex-1">
+                <span className="text-xs text-[#CCCCCC] font-semibold">{food.name}</span>
+                {food.calories > 0 && (
+                  <div className="flex items-center gap-2.5 mt-1">
+                    <span className="text-[9px] font-bold text-[#E8FF00] bg-[#E8FF00]/8 px-1.5 py-0.5 rounded">{food.calories} kcal</span>
+                    <span className="text-[8px] font-bold text-[#FF3A2D]">P:{food.protein}g</span>
+                    <span className="text-[8px] font-bold text-[#4DA6FF]">C:{food.carbs}g</span>
+                    <span className="text-[8px] font-bold text-[#34D399]">F:{food.fat}g</span>
+                  </div>
+                )}
+              </div>
+              <span className="text-[10px] font-bold text-[#666666] uppercase shrink-0 ml-3">{food.qty}</span>
             </div>
           ))}
         </div>

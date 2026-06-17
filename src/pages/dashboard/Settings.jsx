@@ -65,12 +65,17 @@ export function Settings() {
     }
   }
 
-  const tabs = [
-    { id: 'profile', name: 'Profile', icon: <User size={16} /> },
-    { id: 'subscription', name: 'Subscription', icon: <CreditCard size={16} /> },
-    { id: 'notifications', name: 'Notifications', icon: <Bell size={16} /> },
-    { id: 'password', name: 'Password', icon: <Lock size={16} /> }
-  ]
+  const tabs = user?.role === 'admin'
+    ? [
+        { id: 'profile', name: 'Profile', icon: <User size={16} /> },
+        { id: 'password', name: 'Password', icon: <Lock size={16} /> }
+      ]
+    : [
+        { id: 'profile', name: 'Profile', icon: <User size={16} /> },
+        { id: 'subscription', name: 'Subscription', icon: <CreditCard size={16} /> },
+        { id: 'notifications', name: 'Notifications', icon: <Bell size={16} /> },
+        { id: 'password', name: 'Password', icon: <Lock size={16} /> }
+      ]
 
   return (
     <div className="space-y-6 font-dmsans select-none">
@@ -133,18 +138,20 @@ export function Settings() {
                   />
                 </div>
 
-                <div className="space-y-1.5">
-                  <label className="text-xs font-bold text-[#666666] uppercase tracking-wider block">Fitness Level</label>
-                  <select
-                    value={level}
-                    onChange={(e) => setLevel(e.target.value)}
-                    className="w-full bg-[#161616] border border-[#1F1F1F] rounded-lg py-2.5 px-4 text-sm text-[#F5F5F5] outline-none cursor-pointer"
-                  >
-                    <option value="beginner">Beginner (Foundation Shred)</option>
-                    <option value="intermediate">Intermediate (Hypertrophy Bulk)</option>
-                    <option value="advanced">Advanced (Elite Conditioning)</option>
-                  </select>
-                </div>
+                {user?.role !== 'admin' && (
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-bold text-[#666666] uppercase tracking-wider block">Fitness Level</label>
+                    <select
+                      value={level}
+                      onChange={(e) => setLevel(e.target.value)}
+                      className="w-full bg-[#161616] border border-[#1F1F1F] rounded-lg py-2.5 px-4 text-sm text-[#F5F5F5] outline-none cursor-pointer"
+                    >
+                      <option value="beginner">Beginner (Foundation Shred)</option>
+                      <option value="intermediate">Intermediate (Hypertrophy Bulk)</option>
+                      <option value="advanced">Advanced (Elite Conditioning)</option>
+                    </select>
+                  </div>
+                )}
 
                 <Button type="submit" loading={loading} className="font-bebas uppercase tracking-wider text-sm py-2.5 px-6">
                   Save Changes

@@ -5,7 +5,90 @@ import { Badge } from '../../components/ui/Badge'
 import { supabase } from '../../lib/supabase'
 import { toast } from '../../store/toastStore'
 import { parseWorkoutPlan, parseNutritionPlan } from '../../utils/planParser'
-import { Eye, Edit3, Trash2, Search, Plus, Save, Dumbbell, Apple, AlertTriangle, RefreshCw, FileText } from 'lucide-react'
+import { Eye, Edit3, Trash2, Search, Plus, Save, Dumbbell, Apple, AlertTriangle, RefreshCw, FileText, ChevronDown, ChevronUp } from 'lucide-react'
+
+const activityLabels = {
+  desk: 'Desk / Low Activity',
+  physical: 'Physical / High Activity',
+  shifts: 'Shifts / Variable Schedule',
+}
+
+const trainingDurationLabels = {
+  '<3m': 'Less than 3 Months',
+  '3-6m': '3 - 6 Months',
+  '6-12m': '6 Months - 1 Year',
+  '>1y': 'More than 1 Year',
+}
+
+const workoutDaysLabels = {
+  '1-2': '1 - 2 Days/Week',
+  '3-5': '3 - 5 Days/Week',
+  '5-7': '5 - 7 Days/Week',
+}
+
+const sleepHoursLabels = {
+  '<5': 'Less than 5 Hours',
+  '5-7': '5 - 7 Hours',
+  '>7': 'More than 7 Hours',
+}
+
+const stressLabels = {
+  low: 'Low',
+  medium: 'Medium',
+  high: 'High',
+}
+
+const stepsLabels = {
+  '<5000': 'Less than 5,000 steps',
+  '5000-10000': '5,000 - 10,000 steps',
+  '>10000': 'More than 10,000 steps',
+}
+
+const eatOutLabels = {
+  yes: 'Yes',
+  no: 'No',
+  sometimes: 'Sometimes',
+}
+
+const waterLabels = {
+  '1-2': '1 - 2 Liters',
+  '2-4': '2 - 4 Liters',
+  '>4': 'More than 4 Liters',
+}
+
+const primaryGoalLabels = {
+  shredding: 'Fat Loss (Shredding)',
+  bulking: 'Muscle Gain (Bulking)',
+  recomp: 'Body Recomposition',
+  health: 'Health Improvement',
+}
+
+const timelineLabels = {
+  '3m': '3 Months',
+  '6m': '6 Months',
+  '1y': '1 Year',
+  indefinite: 'Indefinite / No target date',
+}
+
+const budgetLabels = {
+  '1000-2000': '1,000 - 2,000 EGP',
+  '2000-3000': '2,000 - 3,000 EGP',
+  '3000-4000': '3,000 - 4,000 EGP',
+  '4000+': '4,000+ EGP',
+}
+
+const prepHomeLabels = {
+  home: 'Prepare at home',
+  ready: 'Rely on ready/takeout meals',
+  both: 'Both',
+}
+
+const failureReasonsLabels = {
+  hunger: 'Hunger',
+  boredom: 'Boredom',
+  time: 'Time constraints',
+  cost: 'Cost',
+}
 
 export function ManageClients() {
   const [clients, setClients] = useState([])
@@ -26,6 +109,7 @@ export function ManageClients() {
   const [editLevel, setEditLevel] = useState('beginner')
   const [editStatus, setEditStatus] = useState('inactive')
   const [savingProfile, setSavingProfile] = useState(false)
+  const [isQuestionnaireOpen, setIsQuestionnaireOpen] = useState(false)
 
   const fetchClients = useCallback(async () => {
     setLoading(true)
@@ -53,6 +137,7 @@ export function ManageClients() {
   const handleSelectClient = (client) => {
     setSelectedClient(client)
     setIsEditingProfile(false)
+    setIsQuestionnaireOpen(false)
     
     // Extract plans if they exist as JSONB strings/objects
     const workoutPlan = client.workout_plan
@@ -539,6 +624,254 @@ export function ManageClients() {
                 </div>
               )}
             </div>
+
+            {/* 1.5. Intake Questionnaire Card */}
+            {selectedClient.questionnaire && (
+              <Card className="p-0 overflow-hidden border border-[#E8FF00]/10">
+                <button
+                  onClick={() => setIsQuestionnaireOpen(!isQuestionnaireOpen)}
+                  className="w-full flex items-center justify-between p-4 bg-[#111111] hover:bg-[#161616] transition-colors outline-none cursor-pointer text-left"
+                >
+                  <div className="flex items-center gap-2 text-xs font-bold text-[#E8FF00] uppercase tracking-wider">
+                    <FileText size={16} />
+                    <span>Intake Questionnaire / استمارة المتابعة</span>
+                  </div>
+                  {isQuestionnaireOpen ? <ChevronUp size={16} className="text-[#666666]" /> : <ChevronDown size={16} className="text-[#666666]" />}
+                </button>
+
+                {isQuestionnaireOpen && (
+                  <div className="p-5 border-t border-[#1F1F1F] bg-[#111111] space-y-6 max-h-[500px] overflow-y-auto text-xs text-[#999999] leading-relaxed">
+                    
+                    {/* General & Health */}
+                    <div className="space-y-3">
+                      <h4 className="text-[11px] font-bold text-[#E8FF00] uppercase tracking-wider border-b border-[#1F1F1F] pb-1">
+                        1. General & Health Info
+                      </h4>
+                      <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+                        <div>
+                          <span className="block text-[10px] text-[#555] uppercase font-bold">Age</span>
+                          <span className="text-[#F5F5F5] font-semibold mt-0.5 block">{selectedClient.questionnaire.age} yrs</span>
+                        </div>
+                        <div>
+                          <span className="block text-[10px] text-[#555] uppercase font-bold">Height</span>
+                          <span className="text-[#F5F5F5] font-semibold mt-0.5 block">{selectedClient.questionnaire.height} cm</span>
+                        </div>
+                        <div>
+                          <span className="block text-[10px] text-[#555] uppercase font-bold">Weight</span>
+                          <span className="text-[#F5F5F5] font-semibold mt-0.5 block">{selectedClient.questionnaire.weight} kg</span>
+                        </div>
+                        <div className="col-span-2 sm:col-span-3">
+                          <span className="block text-[10px] text-[#555] uppercase font-bold">Daily Activity</span>
+                          <span className="text-[#F5F5F5] font-semibold mt-0.5 block">
+                            {activityLabels[selectedClient.questionnaire.activity] || selectedClient.questionnaire.activity || '—'}
+                          </span>
+                        </div>
+                      </div>
+
+                      <div className="space-y-2 pt-2 border-t border-[#161616]">
+                        <div>
+                          <span className="block text-[10px] text-[#555] uppercase font-bold">Chronic Diseases</span>
+                          <span className={`font-semibold mt-0.5 block ${selectedClient.questionnaire.health?.has_chronic ? 'text-[#FF3A2D]' : 'text-[#F5F5F5]'}`}>
+                            {selectedClient.questionnaire.health?.has_chronic 
+                              ? `Yes: ${selectedClient.questionnaire.health.chronic_details}` 
+                              : 'No'}
+                          </span>
+                        </div>
+                        <div>
+                          <span className="block text-[10px] text-[#555] uppercase font-bold">Food Allergies</span>
+                          <span className={`font-semibold mt-0.5 block ${selectedClient.questionnaire.health?.has_allergies ? 'text-[#FF3A2D]' : 'text-[#F5F5F5]'}`}>
+                            {selectedClient.questionnaire.health?.has_allergies 
+                              ? `Yes: ${selectedClient.questionnaire.health.allergies_details}` 
+                              : 'No'}
+                          </span>
+                        </div>
+                        <div>
+                          <span className="block text-[10px] text-[#555] uppercase font-bold">Digestive Issues</span>
+                          <span className={`font-semibold mt-0.5 block ${selectedClient.questionnaire.health?.has_digestion ? 'text-[#FF8C00]' : 'text-[#F5F5F5]'}`}>
+                            {selectedClient.questionnaire.health?.has_digestion 
+                              ? `Yes: ${selectedClient.questionnaire.health.digestion_details}` 
+                              : 'No'}
+                          </span>
+                        </div>
+                        <div>
+                          <span className="block text-[10px] text-[#555] uppercase font-bold">Regular Medications</span>
+                          <span className={`font-semibold mt-0.5 block ${selectedClient.questionnaire.health?.has_meds ? 'text-[#FF3A2D]' : 'text-[#F5F5F5]'}`}>
+                            {selectedClient.questionnaire.health?.has_meds 
+                              ? `Yes: ${selectedClient.questionnaire.health.meds_details}` 
+                              : 'No'}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Fitness & Lifestyle */}
+                    <div className="space-y-3">
+                      <h4 className="text-[11px] font-bold text-[#E8FF00] uppercase tracking-wider border-b border-[#1F1F1F] pb-1">
+                        2. Fitness & Lifestyle
+                      </h4>
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <span className="block text-[10px] text-[#555] uppercase font-bold">Training Experience</span>
+                          <span className="text-[#F5F5F5] font-semibold mt-0.5 block">
+                            {trainingDurationLabels[selectedClient.questionnaire.fitness_history?.training_duration] || selectedClient.questionnaire.fitness_history?.training_duration || '—'}
+                          </span>
+                        </div>
+                        <div>
+                          <span className="block text-[10px] text-[#555] uppercase font-bold">Workouts per Week</span>
+                          <span className="text-[#F5F5F5] font-semibold mt-0.5 block">
+                            {workoutDaysLabels[selectedClient.questionnaire.fitness_history?.workout_days] || selectedClient.questionnaire.fitness_history?.workout_days || '—'}
+                          </span>
+                        </div>
+                        <div>
+                          <span className="block text-[10px] text-[#555] uppercase font-bold">Sleep Duration</span>
+                          <span className="text-[#F5F5F5] font-semibold mt-0.5 block">
+                            {sleepHoursLabels[selectedClient.questionnaire.lifestyle?.sleep_hours] || selectedClient.questionnaire.lifestyle?.sleep_hours || '—'}
+                          </span>
+                        </div>
+                        <div>
+                          <span className="block text-[10px] text-[#555] uppercase font-bold">Sleep Schedule</span>
+                          <span className="text-[#F5F5F5] font-semibold mt-0.5 block">
+                            {selectedClient.questionnaire.lifestyle?.sleep_schedule || '—'}
+                          </span>
+                        </div>
+                        <div>
+                          <span className="block text-[10px] text-[#555] uppercase font-bold">Stress Level</span>
+                          <span className="text-[#F5F5F5] font-semibold mt-0.5 block">
+                            {stressLabels[selectedClient.questionnaire.lifestyle?.stress_level] || selectedClient.questionnaire.lifestyle?.stress_level || '—'}
+                          </span>
+                        </div>
+                        <div>
+                          <span className="block text-[10px] text-[#555] uppercase font-bold">Daily Steps</span>
+                          <span className="text-[#F5F5F5] font-semibold mt-0.5 block">
+                            {stepsLabels[selectedClient.questionnaire.lifestyle?.daily_steps] || selectedClient.questionnaire.lifestyle?.daily_steps || '—'}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Nutrition & Supplements */}
+                    <div className="space-y-3">
+                      <h4 className="text-[11px] font-bold text-[#E8FF00] uppercase tracking-wider border-b border-[#1F1F1F] pb-1">
+                        3. Eating Habits & Supplements
+                      </h4>
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <span className="block text-[10px] text-[#555] uppercase font-bold">Meals per Day</span>
+                          <span className="text-[#F5F5F5] font-semibold mt-0.5 block">
+                            {selectedClient.questionnaire.eating_habits?.meals_per_day || '—'}
+                          </span>
+                        </div>
+                        <div>
+                          <span className="block text-[10px] text-[#555] uppercase font-bold">Unskippable Meals</span>
+                          <span className="text-[#F5F5F5] font-semibold mt-0.5 block">
+                            {selectedClient.questionnaire.eating_habits?.unskippable_meals || '—'}
+                          </span>
+                        </div>
+                        <div>
+                          <span className="block text-[10px] text-[#555] uppercase font-bold">Eating Out Frequency</span>
+                          <span className="text-[#F5F5F5] font-semibold mt-0.5 block">
+                            {eatOutLabels[selectedClient.questionnaire.eating_habits?.eat_out] || selectedClient.questionnaire.eating_habits?.eat_out || '—'}
+                          </span>
+                        </div>
+                        <div>
+                          <span className="block text-[10px] text-[#555] uppercase font-bold">Daily Water Intake</span>
+                          <span className="text-[#F5F5F5] font-semibold mt-0.5 block">
+                            {waterLabels[selectedClient.questionnaire.eating_habits?.water_intake] || selectedClient.questionnaire.eating_habits?.water_intake || '—'}
+                          </span>
+                        </div>
+                        <div className="col-span-2">
+                          <span className="block text-[10px] text-[#555] uppercase font-bold">Favorite Foods</span>
+                          <span className="text-[#F5F5F5] font-semibold mt-0.5 block">
+                            {selectedClient.questionnaire.eating_habits?.favorite_foods || '—'}
+                          </span>
+                        </div>
+                        <div className="col-span-2">
+                          <span className="block text-[10px] text-[#555] uppercase font-bold">Disliked Foods</span>
+                          <span className="text-[#F5F5F5] font-semibold mt-0.5 block">
+                            {selectedClient.questionnaire.eating_habits?.disliked_foods || '—'}
+                          </span>
+                        </div>
+                      </div>
+
+                      <div className="space-y-2 pt-2 border-t border-[#161616]">
+                        <div>
+                          <span className="block text-[10px] text-[#555] uppercase font-bold">Uses Supplements</span>
+                          <span className="text-[#F5F5F5] font-semibold mt-0.5 block">
+                            {selectedClient.questionnaire.supplements?.use_supplements 
+                              ? `Yes: ${selectedClient.questionnaire.supplements.supplements_details}` 
+                              : 'No'}
+                          </span>
+                        </div>
+                        <div>
+                          <span className="block text-[10px] text-[#555] uppercase font-bold">Supplement Side Effects</span>
+                          <span className={`font-semibold mt-0.5 block ${selectedClient.questionnaire.supplements?.has_side_effects ? 'text-[#FF8C00]' : 'text-[#F5F5F5]'}`}>
+                            {selectedClient.questionnaire.supplements?.has_side_effects 
+                              ? `Yes: ${selectedClient.questionnaire.supplements.side_effects_details}` 
+                              : 'No'}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Goals & Budget */}
+                    <div className="space-y-3">
+                      <h4 className="text-[11px] font-bold text-[#E8FF00] uppercase tracking-wider border-b border-[#1F1F1F] pb-1">
+                        4. Goals & Budget
+                      </h4>
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <span className="block text-[10px] text-[#555] uppercase font-bold">Primary Goal</span>
+                          <span className="text-[#F5F5F5] font-semibold mt-0.5 block">
+                            {primaryGoalLabels[selectedClient.questionnaire.goals?.primary_goal] || selectedClient.questionnaire.goals?.primary_goal || '—'}
+                          </span>
+                        </div>
+                        <div>
+                          <span className="block text-[10px] text-[#555] uppercase font-bold">Target Timeline</span>
+                          <span className="text-[#F5F5F5] font-semibold mt-0.5 block">
+                            {timelineLabels[selectedClient.questionnaire.goals?.timeline] || selectedClient.questionnaire.goals?.timeline || '—'}
+                          </span>
+                        </div>
+                        <div>
+                          <span className="block text-[10px] text-[#555] uppercase font-bold">Monthly Food Budget</span>
+                          <span className="text-[#F5F5F5] font-semibold mt-0.5 block">
+                            {budgetLabels[selectedClient.questionnaire.capabilities?.monthly_budget] || selectedClient.questionnaire.capabilities?.monthly_budget || '—'}
+                          </span>
+                        </div>
+                        <div>
+                          <span className="block text-[10px] text-[#555] uppercase font-bold">Meal Prep Preference</span>
+                          <span className="text-[#F5F5F5] font-semibold mt-0.5 block">
+                            {prepHomeLabels[selectedClient.questionnaire.capabilities?.prepare_meals] || selectedClient.questionnaire.capabilities?.prepare_meals || '—'}
+                          </span>
+                        </div>
+                        <div className="col-span-2 pt-2 border-t border-[#161616]">
+                          <span className="block text-[10px] text-[#555] uppercase font-bold">Did Diet Before?</span>
+                          <span className="text-[#F5F5F5] font-semibold mt-0.5 block">
+                            {selectedClient.questionnaire.diet_history?.did_diet_before 
+                              ? `Yes` 
+                              : 'No'}
+                          </span>
+                          {selectedClient.questionnaire.diet_history?.did_diet_before && (
+                            <div className="mt-2 space-y-1.5 pl-3 border-l border-[#1F1F1F]">
+                              <div>
+                                <span className="block text-[9px] text-[#555] uppercase font-bold">Most Successful Diet</span>
+                                <span className="text-[#F5F5F5]">{selectedClient.questionnaire.diet_history.successful_diet || '—'}</span>
+                              </div>
+                              <div>
+                                <span className="block text-[9px] text-[#555] uppercase font-bold">Failure Reasons</span>
+                                <span className="text-[#F5F5F5]">
+                                  {selectedClient.questionnaire.diet_history.failure_reasons?.map(r => failureReasonsLabels[r] || r).join(', ') || '—'}
+                                </span>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+
+                  </div>
+                )}
+              </Card>
+            )}
 
             {/* 2. Custom Workout & Diet Plans Injector */}
             <Card className="space-y-4">

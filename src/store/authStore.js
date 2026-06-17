@@ -105,7 +105,7 @@ export const useAuthStore = create((set, get) => ({
     }
   },
 
-  register: async (email, password, fullName, phone, level = 'beginner') => {
+  register: async (email, password, fullName, phone, level = 'beginner', questionnaire = null) => {
     set({ loading: true, error: null })
     
     const { data, error } = await supabase.auth.signUp({
@@ -133,6 +133,7 @@ export const useAuthStore = create((set, get) => ({
         fitness_level: level,
         role: 'subscriber',
         subscription_status: 'inactive',
+        questionnaire,
       }
 
       // Upsert profile in Supabase db

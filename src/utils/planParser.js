@@ -186,11 +186,27 @@ export function parseWorkoutPlan(plan) {
       const restMatch = line.match(/Rest:\s*([^\s|]+)/i)
       if (restMatch) currentExercise.rest = restMatch[1].trim()
       
-      const intensityMatch = line.match(/Intensity:\s*([^\s|]+)/i) || line.match(/Difficulty:\s*([^\s|]+)/i)
+      const intensityMatch = line.match(/Intensity:\s*([^|\n]+)/i) || line.match(/Difficulty:\s*([^|\n]+)/i) || line.match(/RIR:\s*([^|\n]+)/i)
       if (intensityMatch) {
-        currentExercise.difficulty = intensityMatch[1].trim()
-        const diff = currentExercise.difficulty.toLowerCase()
-        currentExercise.dotColor = diff === 'easy' ? 'bg-[#34D399]' : diff === 'hard' ? 'bg-[#FF3A2D]' : 'bg-[#FF8C00]'
+        const val = intensityMatch[1].trim()
+        currentExercise.difficulty = val
+        if (val.toLowerCase().includes('rir')) {
+          currentExercise.rir = val
+          const rirVal = val.toLowerCase()
+          if (rirVal.includes('0') || rirVal.includes('1')) {
+            currentExercise.dotColor = 'bg-[#FF3A2D]'
+            currentExercise.difficulty = 'Hard'
+          } else if (rirVal.includes('2') || rirVal.includes('3')) {
+            currentExercise.dotColor = 'bg-[#FF8C00]'
+            currentExercise.difficulty = 'Medium'
+          } else {
+            currentExercise.dotColor = 'bg-[#34D399]'
+            currentExercise.difficulty = 'Easy'
+          }
+        } else {
+          const diff = val.toLowerCase()
+          currentExercise.dotColor = diff === 'easy' ? 'bg-[#34D399]' : diff === 'hard' ? 'bg-[#FF3A2D]' : 'bg-[#FF8C00]'
+        }
       }
     }
   }

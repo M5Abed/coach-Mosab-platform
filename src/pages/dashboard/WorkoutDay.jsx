@@ -146,7 +146,19 @@ export function WorkoutDay() {
         }
       }
 
-      const diff = (ex.difficulty || 'medium').toLowerCase()
+      let diff = (ex.difficulty || 'medium').toLowerCase()
+      const rirVal = ex.rir
+      if (rirVal) {
+        const rVal = rirVal.toLowerCase()
+        if (rVal.includes('0') || rVal.includes('1')) {
+          diff = 'hard'
+        } else if (rVal.includes('2') || rVal.includes('3')) {
+          diff = 'medium'
+        } else {
+          diff = 'easy'
+        }
+      }
+
       let dotColor = 'bg-[#FF8C00]'
       if (diff === 'easy' || diff === 'beginner') dotColor = 'bg-[#34D399]'
       if (diff === 'hard' || diff === 'advanced') dotColor = 'bg-[#FF3A2D]'
@@ -158,6 +170,7 @@ export function WorkoutDay() {
         reps: ex.reps || '10',
         rest: ex.rest || '90s',
         difficulty: ex.difficulty || 'Medium',
+        rir: ex.rir,
         dotColor,
         tip,
         guide
@@ -293,7 +306,7 @@ export function WorkoutDay() {
                 <div className="flex items-center justify-between sm:justify-end gap-3.5 border-t sm:border-none border-[#1A1A1A] pt-2.5 sm:pt-0">
                   <div className="flex items-center gap-1.5 text-xs text-[#666666] font-semibold uppercase">
                     <span className={`w-2.5 h-2.5 rounded-full ${ex.dotColor}`} />
-                    <span>{ex.difficulty}</span>
+                    <span>{ex.rir || ex.difficulty}</span>
                   </div>
                   
                   <button 

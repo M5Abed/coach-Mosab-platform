@@ -18,16 +18,25 @@ export function WorkoutBuilder() {
 
   // Current exercises list
   const [exercises, setExercises] = useState([
-    { id: 1, name: 'Barbell Flat Bench Press', sets: 4, reps: '8-10', rest: '90s', difficulty: 'Hard', day: 1 },
-    { id: 2, name: 'Incline Dumbbell Flyes', sets: 3, reps: '12', rest: '75s', difficulty: 'Medium', day: 1 }
+    { id: 1, name: 'Barbell Flat Bench Press', sets: 4, reps: '8-10', rest: '90s', rir: '0 RIR', difficulty: 'Hard', day: 1 },
+    { id: 2, name: 'Incline Dumbbell Flyes', sets: 3, reps: '12', rest: '75s', rir: '2 RIR', difficulty: 'Medium', day: 1 }
   ])
+
+  // Options for dropdowns
+  const SETS_OPTIONS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
+  const REPS_OPTIONS = [
+    '1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12', '13', '14', '15', '18', '20', '25', '30',
+    '5-8', '8-10', '10-12', '12-15', '15-20', 'To Failure'
+  ]
+  const REST_OPTIONS = ['30s', '45s', '60s', '75s', '90s', '120s', '150s', '180s', '240s', '300s']
+  const RIR_OPTIONS = ['0 RIR', '1 RIR', '2 RIR', '3 RIR', '4 RIR', '5+ RIR']
 
   // New exercise inputs
   const [exName, setExName] = useState('')
   const [exSets, setExSets] = useState(4)
   const [exReps, setExReps] = useState('10')
   const [exRest, setExRest] = useState('90s')
-  const [exDifficulty, setExDifficulty] = useState('Medium')
+  const [exRir, setExRir] = useState('2 RIR')
   const [exDay, setExDay] = useState(1)
 
   useEffect(() => {
@@ -66,13 +75,20 @@ export function WorkoutBuilder() {
       return
     }
 
+    const getDifficultyFromRir = (rir) => {
+      if (rir === '0 RIR' || rir === '1 RIR') return 'Hard'
+      if (rir === '2 RIR' || rir === '3 RIR') return 'Medium'
+      return 'Easy'
+    }
+
     const newEx = {
       id: Date.now(),
       name: exName,
       sets: exSets,
       reps: exReps,
       rest: exRest,
-      difficulty: exDifficulty,
+      rir: exRir,
+      difficulty: getDifficultyFromRir(exRir),
       day: exDay
     }
 
@@ -109,7 +125,7 @@ export function WorkoutBuilder() {
         } else {
           dayExercises.forEach((ex, idx) => {
             formattedText += `   ${idx + 1}. ${ex.name.toUpperCase()}\n`
-            formattedText += `      • ${ex.sets} Sets x ${ex.reps} Reps | Rest: ${ex.rest} | Intensity: ${ex.difficulty}\n`
+            formattedText += `      • ${ex.sets} Sets x ${ex.reps} Reps | Rest: ${ex.rest} | RIR: ${ex.rir || ex.difficulty}\n`
           })
         }
       }
@@ -216,14 +232,16 @@ export function WorkoutBuilder() {
               </div>
 
               <div className="space-y-1.5">
-                <label className="text-xs font-bold text-[#666666] uppercase tracking-wider block">Duration (Weeks)</label>
-                <input
-                  type="text"
-                  placeholder="e.g. 8 Weeks"
+                <label className="text-xs font-bold text-[#666666] uppercase tracking-wider block">Duration</label>
+                <select
                   value={duration}
                   onChange={(e) => setDuration(e.target.value)}
-                  className="w-full bg-[#161616] border border-[#1F1F1F] rounded-lg py-2.5 px-4 text-sm text-[#F5F5F5] outline-none"
-                />
+                  className="w-full bg-[#161616] border border-[#1F1F1F] rounded-lg py-2.5 px-4 text-sm text-[#F5F5F5] outline-none cursor-pointer"
+                >
+                  {['1 Week', '2 Weeks', '3 Weeks', '4 Weeks', '5 Weeks', '6 Weeks', '8 Weeks', '10 Weeks', '12 Weeks', '16 Weeks'].map(opt => (
+                    <option key={opt} value={opt}>{opt}</option>
+                  ))}
+                </select>
               </div>
 
               <div className="space-y-1.5">
@@ -271,7 +289,13 @@ export function WorkoutBuilder() {
                         </div>
 
                         <div className="flex items-center gap-3">
-                          <Badge variant={ex.difficulty.toLowerCase()}>{ex.difficulty}</Badge>
+                          <Badge variant={
+                            ex.difficulty?.toLowerCase() === 'hard' ? 'advanced' :
+                            ex.difficulty?.toLowerCase() === 'medium' ? 'pending' :
+                            ex.difficulty?.toLowerCase() === 'easy' ? 'beginner' : 'default'
+                          }>
+                            {ex.rir || ex.difficulty}
+                          </Badge>
                           <button
                             onClick={() => handleDeleteExercise(ex.id)}
                             className="p-1 rounded hover:bg-[#1C1C1C] text-[#666666] hover:text-[#FF3A2D] transition-colors cursor-pointer outline-none"
@@ -312,50 +336,55 @@ export function WorkoutBuilder() {
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-1.5">
                   <label className="text-xs font-bold text-[#666666] uppercase tracking-wider block">Sets</label>
-                  <input
-                    type="number"
+                  <select
                     value={exSets}
-                    onChange={(e) => setExSets(Number(e.target.value) || 1)}
-                    className="w-full bg-[#161616] border border-[#1F1F1F] rounded-lg py-2 px-3 text-sm text-[#F5F5F5] outline-none"
-                    required
-                  />
+                    onChange={(e) => setExSets(Number(e.target.value))}
+                    className="w-full bg-[#161616] border border-[#1F1F1F] rounded-lg py-2 px-3 text-sm text-[#F5F5F5] outline-none cursor-pointer"
+                  >
+                    {SETS_OPTIONS.map(s => (
+                      <option key={s} value={s}>{s}</option>
+                    ))}
+                  </select>
                 </div>
 
                 <div className="space-y-1.5">
                   <label className="text-xs font-bold text-[#666666] uppercase tracking-wider block">Reps</label>
-                  <input
-                    type="text"
-                    placeholder="8-10 or 12"
+                  <select
                     value={exReps}
                     onChange={(e) => setExReps(e.target.value)}
-                    className="w-full bg-[#161616] border border-[#1F1F1F] rounded-lg py-2 px-3 text-sm text-[#F5F5F5] outline-none"
-                    required
-                  />
+                    className="w-full bg-[#161616] border border-[#1F1F1F] rounded-lg py-2 px-3 text-sm text-[#F5F5F5] outline-none cursor-pointer"
+                  >
+                    {REPS_OPTIONS.map(r => (
+                      <option key={r} value={r}>{r}</option>
+                    ))}
+                  </select>
                 </div>
               </div>
 
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-1.5">
                   <label className="text-xs font-bold text-[#666666] uppercase tracking-wider block">Rest Suggestion</label>
-                  <input
-                    type="text"
-                    placeholder="90s"
+                  <select
                     value={exRest}
                     onChange={(e) => setExRest(e.target.value)}
-                    className="w-full bg-[#161616] border border-[#1F1F1F] rounded-lg py-2 px-3 text-sm text-[#F5F5F5] outline-none"
-                  />
+                    className="w-full bg-[#161616] border border-[#1F1F1F] rounded-lg py-2 px-3 text-sm text-[#F5F5F5] outline-none cursor-pointer"
+                  >
+                    {REST_OPTIONS.map(r => (
+                      <option key={r} value={r}>{r}</option>
+                    ))}
+                  </select>
                 </div>
 
                 <div className="space-y-1.5">
-                  <label className="text-xs font-bold text-[#666666] uppercase tracking-wider block">Difficulty</label>
+                  <label className="text-xs font-bold text-[#666666] uppercase tracking-wider block">RIR (Reps in Reserve)</label>
                   <select
-                    value={exDifficulty}
-                    onChange={(e) => setExDifficulty(e.target.value)}
+                    value={exRir}
+                    onChange={(e) => setExRir(e.target.value)}
                     className="w-full bg-[#161616] border border-[#1F1F1F] rounded-lg py-2 px-3 text-sm text-[#F5F5F5] outline-none cursor-pointer"
                   >
-                    <option value="Easy">Easy</option>
-                    <option value="Medium">Medium</option>
-                    <option value="Hard">Hard</option>
+                    {RIR_OPTIONS.map(r => (
+                      <option key={r} value={r}>{r}</option>
+                    ))}
                   </select>
                 </div>
               </div>

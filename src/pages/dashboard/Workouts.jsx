@@ -33,7 +33,18 @@ function ExerciseCard({ exercise, index }) {
     medium: { variant: 'pending', color: '#FF8C00' },
     hard: { variant: 'advanced', color: '#FF3A2D' },
   }
-  const diffStr = String(exercise.difficulty || 'medium').toLowerCase()
+  let diffStr = String(exercise.difficulty || 'medium').toLowerCase()
+  const rirVal = exercise.rir
+  if (rirVal) {
+    const rVal = rirVal.toLowerCase()
+    if (rVal.includes('0') || rVal.includes('1')) {
+      diffStr = 'hard'
+    } else if (rVal.includes('2') || rVal.includes('3')) {
+      diffStr = 'medium'
+    } else {
+      diffStr = 'easy'
+    }
+  }
   const diff = difficultyMap[diffStr] || difficultyMap.medium
 
   return (
@@ -76,7 +87,7 @@ function ExerciseCard({ exercise, index }) {
             </div>
           </div>
 
-          <Badge variant={diff.variant}>{exercise.difficulty || 'Medium'}</Badge>
+          <Badge variant={diff.variant}>{exercise.rir || exercise.difficulty || 'Medium'}</Badge>
         </div>
       </div>
     </Card>

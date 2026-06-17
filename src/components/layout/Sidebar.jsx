@@ -49,6 +49,7 @@ export function Sidebar() {
     { name: language === 'ar' ? "بدائل الأغذية" : "Food Alternatives", path: '/admin/food-alternatives', icon: <ArrowLeftRight size={20} /> },
     { name: language === 'ar' ? "سجل المدفوعات" : "Payments log", path: '/admin/payments', icon: <TrendingUp size={20} /> },
     { name: language === 'ar' ? "إدارة الفيديوهات" : "Videos Manager", path: '/admin/videos', icon: <Video size={20} /> },
+    { name: language === 'ar' ? "الإعدادات" : "Settings", path: '/dashboard/settings', icon: <Settings size={20} /> },
   ]
 
   const isAdmin = user?.role === 'admin'

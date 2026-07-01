@@ -55,7 +55,6 @@ export function Payment() {
   const [selectedMethod, setSelectedMethod] = useState(methods[0])
 
   // Step 2 Form States
-  const [amount, setAmount] = useState(planPrice)
   const [date, setDate] = useState(() => {
     const now = new Date()
     return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`
@@ -147,7 +146,7 @@ export function Payment() {
                           `📧 Email: ${user?.email || 'N/A'}\n` +
                           `📱 Sender Phone: ${phone}\n` +
                           `💳 Channel: ${selectedMethod?.name || 'N/A'}\n` +
-                          `💰 Amount: ${amount} EGP\n` +
+                          `💰 Amount: ${planPrice} EGP\n` +
                           `📅 Date: ${date}\n` +
                           `📝 Notes: ${notes || 'None'}`
 
@@ -386,7 +385,7 @@ export function Payment() {
                   <DollarSign className="absolute left-3 rtl:left-auto rtl:right-3 top-1/2 -translate-y-1/2 text-[#666666]" size={16} />
                   <input
                     type="number"
-                    value={amount}
+                    value={planPrice || ''}
                     className="w-full bg-[#161616] border border-[#1F1F1F] rounded-lg py-2 pl-9 pr-4 rtl:pl-4 rtl:pr-9 text-sm text-[#F5F5F5] outline-none"
                     required
                     readOnly

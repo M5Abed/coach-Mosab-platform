@@ -1,10 +1,131 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useMemo } from 'react'
 import { Card } from '../../components/ui/Card'
 import { Button } from '../../components/ui/Button'
 import { Badge } from '../../components/ui/Badge'
 import { toast } from '../../store/toastStore'
 import { Plus, Trash2, Calendar, Save, Upload, CheckCircle2, RefreshCw, AlertTriangle } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
+
+function AdminTransformationCard({ trans, setDeleteConfirm }) {
+  const [activeAngle, setActiveAngle] = useState('front')
+
+  const availableViews = useMemo(() => {
+    const views = ['front']
+    if (trans.before_side_url || trans.after_side_url) {
+      views.push('side')
+    }
+    if (trans.before_back_url || trans.after_back_url) {
+      views.push('back')
+    }
+    return views
+  }, [trans])
+
+  const beforeImage = useMemo(() => {
+    if (activeAngle === 'side') return trans.before_side_url || trans.before_image_url
+    if (activeAngle === 'back') return trans.before_back_url || trans.before_image_url
+    return trans.before_image_url
+  }, [activeAngle, trans])
+
+  const afterImage = useMemo(() => {
+    if (activeAngle === 'side') return trans.after_side_url || trans.after_image_url
+    if (activeAngle === 'back') return trans.after_back_url || trans.after_image_url
+    return trans.after_image_url
+  }, [activeAngle, trans])
+
+  return (
+    <Card className="p-5 flex flex-col md:flex-row gap-5 items-stretch relative hover:border-[#E8FF00]/30 transition-all">
+      {/* Before/After side-by-side vertical images */}
+      <div className="flex flex-col gap-2.5 w-full md:w-[260px] shrink-0">
+        <div className="flex gap-2 h-[180px]">
+          {/* Before Image */}
+          <div className="flex-1 bg-black border border-[#1F1F1F] rounded-lg overflow-hidden relative">
+            <img 
+              src={beforeImage} 
+              alt="Before" 
+              className="w-full h-full object-cover" 
+            />
+            <span className="absolute bottom-1.5 left-1.5 bg-black/75 border border-[#1F1F1F] text-[10px] font-bold text-[#FF3A2D] uppercase px-1.5 py-0.5 rounded tracking-wide">
+              Before
+            </span>
+          </div>
+
+          {/* After Image */}
+          <div className="flex-1 bg-black border border-[#1F1F1F] rounded-lg overflow-hidden relative">
+            <img 
+              src={afterImage} 
+              alt="After" 
+              className="w-full h-full object-cover" 
+            />
+            <span className="absolute bottom-1.5 left-1.5 bg-[#E8FF00]/90 border border-[#E8FF00]/30 text-[10px] font-bold text-black uppercase px-1.5 py-0.5 rounded tracking-wide">
+              After
+            </span>
+          </div>
+        </div>
+
+        {/* Available Views Pills */}
+        {availableViews.length > 1 && (
+          <div className="flex justify-center gap-1.5 bg-[#161616] py-1 px-2 rounded-lg border border-[#1F1F1F]">
+            {availableViews.map((angle) => (
+              <button
+                type="button"
+                key={angle}
+                onClick={() => setActiveAngle(angle)}
+                className={`px-2.5 py-0.5 text-[9px] font-bold uppercase rounded transition-colors cursor-pointer ${
+                  activeAngle === angle
+                    ? 'bg-[#E8FF00] text-black'
+                    : 'text-[#666666] hover:text-[#F5F5F5]'
+                }`}
+              >
+                {angle}
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Info details */}
+      <div className="flex-1 flex flex-col justify-between space-y-3">
+        <div className="space-y-2">
+          <div className="flex flex-wrap gap-2">
+            {trans.type_en && (
+              <Badge variant="accent" className="text-[10px] font-bold py-0.5 px-2">
+                {trans.type_en} {trans.type_ar ? `/ ${trans.type_ar}` : ''}
+              </Badge>
+            )}
+            <Badge variant="outline" className="text-[10px] font-bold py-0.5 px-2 text-[#888] border-[#222]">
+              ⏱️ {trans.duration_en} / {trans.duration_ar}
+            </Badge>
+          </div>
+
+          <div className="space-y-1">
+            <p className="text-xs text-[#F5F5F5] font-medium leading-relaxed italic font-sans">
+              " {trans.description_en} "
+            </p>
+            {trans.description_ar && (
+              <p className="text-xs text-[#666666] leading-relaxed rtl:text-right font-medium font-sans">
+                " {trans.description_ar} "
+              </p>
+            )}
+          </div>
+        </div>
+
+        <div className="flex items-center justify-between border-t border-[#1F1F1F] pt-3">
+          <span className="text-[10px] text-[#666666] font-bold uppercase">
+            Order: {trans.sort_order}
+          </span>
+          <button 
+            type="button"
+            onClick={() => setDeleteConfirm(trans)}
+            className="text-xs font-bold text-[#FF3A2D] hover:text-[#FF3A2D]/80 flex items-center gap-1 cursor-pointer outline-none"
+          >
+            <Trash2 size={13} />
+            <span>Remove Card</span>
+          </button>
+        </div>
+      </div>
+    </Card>
+  )
+}
 
 export function TransformationsManager() {
   const [transformations, setTransformations] = useState([])
@@ -25,6 +146,16 @@ export function TransformationsManager() {
   const [afterFile, setAfterFile] = useState(null)
   const [beforePreview, setBeforePreview] = useState(null)
   const [afterPreview, setAfterPreview] = useState(null)
+
+  const [beforeSideFile, setBeforeSideFile] = useState(null)
+  const [afterSideFile, setAfterSideFile] = useState(null)
+  const [beforeSidePreview, setBeforeSidePreview] = useState(null)
+  const [afterSidePreview, setAfterSidePreview] = useState(null)
+
+  const [beforeBackFile, setBeforeBackFile] = useState(null)
+  const [afterBackFile, setAfterBackFile] = useState(null)
+  const [beforeBackPreview, setBeforeBackPreview] = useState(null)
+  const [afterBackPreview, setAfterBackPreview] = useState(null)
 
   const fetchTransformations = async () => {
     setLoading(true)
@@ -95,14 +226,29 @@ export function TransformationsManager() {
     return publicUrlData.publicUrl
   }
 
+  const handleOptionalFileChange = (e, setFile, setPreview) => {
+    const file = e.target.files[0]
+    if (!file) {
+      setFile(null)
+      setPreview(null)
+      return
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error('File size exceeds the 5MB maximum limit.')
+      return
+    }
+    setFile(file)
+    setPreview(URL.createObjectURL(file))
+  }
+
   const handleAddTransformation = async (e) => {
     e.preventDefault()
     if (!beforeFile || !afterFile) {
       toast.error('Please upload both BEFORE and AFTER images.')
       return
     }
-    if (!typeEn || !typeAr || !durationEn || !durationAr) {
-      toast.error('Please fill in the Transformation Type and Duration fields.')
+    if (!durationEn || !durationAr) {
+      toast.error('Please fill in both English and Arabic Duration fields.')
       return
     }
 
@@ -112,12 +258,27 @@ export function TransformationsManager() {
       const beforeUrl = await uploadImage(beforeFile, 'before')
       const afterUrl = await uploadImage(afterFile, 'after')
 
-      // 2. Insert record
+      // 2. Upload optional files
+      let beforeSideUrl = null
+      let afterSideUrl = null
+      let beforeBackUrl = null
+      let afterBackUrl = null
+
+      if (beforeSideFile) beforeSideUrl = await uploadImage(beforeSideFile, 'before_side')
+      if (afterSideFile) afterSideUrl = await uploadImage(afterSideFile, 'after_side')
+      if (beforeBackFile) beforeBackUrl = await uploadImage(beforeBackFile, 'before_back')
+      if (afterBackFile) afterBackUrl = await uploadImage(afterBackFile, 'after_back')
+
+      // 3. Insert record
       const newTrans = {
         before_image_url: beforeUrl,
         after_image_url: afterUrl,
-        type_en: typeEn,
-        type_ar: typeAr,
+        before_side_url: beforeSideUrl,
+        after_side_url: afterSideUrl,
+        before_back_url: beforeBackUrl,
+        after_back_url: afterBackUrl,
+        type_en: typeEn || null,
+        type_ar: typeAr || null,
         duration_en: durationEn,
         duration_ar: durationAr,
         description_en: descriptionEn || null,
@@ -147,6 +308,14 @@ export function TransformationsManager() {
       setAfterFile(null)
       setBeforePreview(null)
       setAfterPreview(null)
+      setBeforeSideFile(null)
+      setAfterSideFile(null)
+      setBeforeSidePreview(null)
+      setAfterSidePreview(null)
+      setBeforeBackFile(null)
+      setAfterBackFile(null)
+      setBeforeBackPreview(null)
+      setAfterBackPreview(null)
     } catch (err) {
       console.error('Error adding transformation:', err)
       toast.error(err.message || 'Failed to save transformation.')
@@ -157,7 +326,7 @@ export function TransformationsManager() {
 
   const confirmDelete = async () => {
     if (!deleteConfirm) return
-    const { id, before_image_url, after_image_url } = deleteConfirm
+    const { id, before_image_url, after_image_url, before_side_url, after_side_url, before_back_url, after_back_url } = deleteConfirm
     setDeleteConfirm(null)
 
     try {
@@ -176,11 +345,12 @@ export function TransformationsManager() {
           const parts = url.split('/transformations/')
           return parts.length > 1 ? parts[1] : null
         }
-        const beforeFileToDelete = getPathFromUrl(before_image_url)
-        const afterFileToDelete = getPathFromUrl(after_image_url)
         const files = []
-        if (beforeFileToDelete) files.push(beforeFileToDelete)
-        if (afterFileToDelete) files.push(afterFileToDelete)
+        const urls = [before_image_url, after_image_url, before_side_url, after_side_url, before_back_url, after_back_url]
+        urls.forEach(url => {
+          const path = getPathFromUrl(url)
+          if (path) files.push(path)
+        })
 
         if (files.length > 0) {
           await supabase.storage.from('transformations').remove(files)
@@ -229,72 +399,11 @@ export function TransformationsManager() {
           ) : (
             <div className="space-y-4">
               {transformations.map((trans) => (
-                <Card key={trans.id} className="p-5 flex flex-col md:flex-row gap-5 items-stretch relative hover:border-[#E8FF00]/30 transition-all">
-                  {/* Before/After side-by-side vertical images */}
-                  <div className="flex gap-2 w-full md:w-[260px] h-[180px] shrink-0">
-                    {/* Before Image */}
-                    <div className="flex-1 bg-black border border-[#1F1F1F] rounded-lg overflow-hidden relative">
-                      <img 
-                        src={trans.before_image_url} 
-                        alt="Before" 
-                        className="w-full h-full object-cover" 
-                      />
-                      <span className="absolute bottom-1.5 left-1.5 bg-black/75 border border-[#1F1F1F] text-[10px] font-bold text-[#FF3A2D] uppercase px-1.5 py-0.5 rounded tracking-wide">
-                        Before
-                      </span>
-                    </div>
-
-                    {/* After Image */}
-                    <div className="flex-1 bg-black border border-[#1F1F1F] rounded-lg overflow-hidden relative">
-                      <img 
-                        src={trans.after_image_url} 
-                        alt="After" 
-                        className="w-full h-full object-cover" 
-                      />
-                      <span className="absolute bottom-1.5 left-1.5 bg-[#E8FF00]/90 border border-[#E8FF00]/30 text-[10px] font-bold text-black uppercase px-1.5 py-0.5 rounded tracking-wide">
-                        After
-                      </span>
-                    </div>
-                  </div>
-
-                  {/* Info details */}
-                  <div className="flex-1 flex flex-col justify-between space-y-3">
-                    <div className="space-y-2">
-                      <div className="flex flex-wrap gap-2">
-                        <Badge variant="accent" className="text-[10px] font-bold py-0.5 px-2">
-                          {trans.type_en} / {trans.type_ar}
-                        </Badge>
-                        <Badge variant="outline" className="text-[10px] font-bold py-0.5 px-2 text-[#888] border-[#222]">
-                          ⏱️ {trans.duration_en} / {trans.duration_ar}
-                        </Badge>
-                      </div>
-
-                      <div className="space-y-1">
-                        <p className="text-xs text-[#F5F5F5] font-medium leading-relaxed italic">
-                          " {trans.description_en} "
-                        </p>
-                        {trans.description_ar && (
-                          <p className="text-xs text-[#666666] leading-relaxed rtl:text-right font-medium">
-                            " {trans.description_ar} "
-                          </p>
-                        )}
-                      </div>
-                    </div>
-
-                    <div className="flex items-center justify-between border-t border-[#1F1F1F] pt-3">
-                      <span className="text-[10px] text-[#666666] font-bold uppercase">
-                        Order: {trans.sort_order}
-                      </span>
-                      <button 
-                        onClick={() => setDeleteConfirm(trans)}
-                        className="text-xs font-bold text-[#FF3A2D] hover:text-[#FF3A2D]/80 flex items-center gap-1 cursor-pointer outline-none"
-                      >
-                        <Trash2 size={13} />
-                        <span>Remove Card</span>
-                      </button>
-                    </div>
-                  </div>
-                </Card>
+                <AdminTransformationCard
+                  key={trans.id}
+                  trans={trans}
+                  setDeleteConfirm={setDeleteConfirm}
+                />
               ))}
             </div>
           )}
@@ -313,8 +422,8 @@ export function TransformationsManager() {
               <div className="grid grid-cols-2 gap-3">
                 {/* Before Upload */}
                 <div className="space-y-1.5">
-                  <label className="text-xs font-bold text-[#666666] uppercase tracking-wider block">Before Image</label>
-                  <div className="border-2 border-dashed border-[#1F1F1F] bg-[#161616] rounded-xl p-4 text-center hover:border-[#FF3A2D]/40 transition-colors relative cursor-pointer h-36 flex flex-col items-center justify-center overflow-hidden">
+                  <label className="text-xs font-bold text-[#666666] uppercase tracking-wider block">Before (Front - Required)</label>
+                  <div className="border-2 border-dashed border-[#1F1F1F] bg-[#161616] rounded-xl p-4 text-center hover:border-[#FF3A2D]/40 transition-colors relative cursor-pointer h-28 flex flex-col items-center justify-center overflow-hidden">
                     <input
                       type="file"
                       onChange={handleBeforeFileChange}
@@ -325,8 +434,8 @@ export function TransformationsManager() {
                       <img src={beforePreview} alt="Before Preview" className="w-full h-full object-cover absolute inset-0" />
                     ) : (
                       <div className="flex flex-col items-center text-[#666666]">
-                        <Upload size={20} className="mb-1" />
-                        <span className="text-[10px] font-bold uppercase">Upload</span>
+                        <Upload size={18} className="mb-0.5" />
+                        <span className="text-[9px] font-bold uppercase">Upload</span>
                       </div>
                     )}
                   </div>
@@ -334,8 +443,8 @@ export function TransformationsManager() {
 
                 {/* After Upload */}
                 <div className="space-y-1.5">
-                  <label className="text-xs font-bold text-[#666666] uppercase tracking-wider block">After Image</label>
-                  <div className="border-2 border-dashed border-[#1F1F1F] bg-[#161616] rounded-xl p-4 text-center hover:border-[#E8FF00]/40 transition-colors relative cursor-pointer h-36 flex flex-col items-center justify-center overflow-hidden">
+                  <label className="text-xs font-bold text-[#666666] uppercase tracking-wider block">After (Front - Required)</label>
+                  <div className="border-2 border-dashed border-[#1F1F1F] bg-[#161616] rounded-xl p-4 text-center hover:border-[#E8FF00]/40 transition-colors relative cursor-pointer h-28 flex flex-col items-center justify-center overflow-hidden">
                     <input
                       type="file"
                       onChange={handleAfterFileChange}
@@ -346,8 +455,98 @@ export function TransformationsManager() {
                       <img src={afterPreview} alt="After Preview" className="w-full h-full object-cover absolute inset-0" />
                     ) : (
                       <div className="flex flex-col items-center text-[#666666]">
-                        <Upload size={20} className="mb-1" />
-                        <span className="text-[10px] font-bold uppercase">Upload</span>
+                        <Upload size={18} className="mb-0.5" />
+                        <span className="text-[9px] font-bold uppercase">Upload</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* Optional Side View Image Uploads side-by-side */}
+              <div className="grid grid-cols-2 gap-3 border-t border-[#1F1F1F]/40 pt-3">
+                {/* Before Side Upload */}
+                <div className="space-y-1.5">
+                  <label className="text-xs font-bold text-[#666666] uppercase tracking-wider block">Before (Side - Optional)</label>
+                  <div className="border-2 border-dashed border-[#1F1F1F] bg-[#161616] rounded-xl p-4 text-center hover:border-[#FF3A2D]/40 transition-colors relative cursor-pointer h-24 flex flex-col items-center justify-center overflow-hidden">
+                    <input
+                      type="file"
+                      onChange={(e) => handleOptionalFileChange(e, setBeforeSideFile, setBeforeSidePreview)}
+                      accept="image/*"
+                      className="absolute inset-0 opacity-0 cursor-pointer"
+                    />
+                    {beforeSidePreview ? (
+                      <img src={beforeSidePreview} alt="Before Side Preview" className="w-full h-full object-cover absolute inset-0" />
+                    ) : (
+                      <div className="flex flex-col items-center text-[#444444]">
+                        <Upload size={16} className="mb-0.5" />
+                        <span className="text-[9px] font-bold uppercase">Upload Side</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* After Side Upload */}
+                <div className="space-y-1.5">
+                  <label className="text-xs font-bold text-[#666666] uppercase tracking-wider block">After (Side - Optional)</label>
+                  <div className="border-2 border-dashed border-[#1F1F1F] bg-[#161616] rounded-xl p-4 text-center hover:border-[#E8FF00]/40 transition-colors relative cursor-pointer h-24 flex flex-col items-center justify-center overflow-hidden">
+                    <input
+                      type="file"
+                      onChange={(e) => handleOptionalFileChange(e, setAfterSideFile, setAfterSidePreview)}
+                      accept="image/*"
+                      className="absolute inset-0 opacity-0 cursor-pointer"
+                    />
+                    {afterSidePreview ? (
+                      <img src={afterSidePreview} alt="After Side Preview" className="w-full h-full object-cover absolute inset-0" />
+                    ) : (
+                      <div className="flex flex-col items-center text-[#444444]">
+                        <Upload size={16} className="mb-0.5" />
+                        <span className="text-[9px] font-bold uppercase">Upload Side</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* Optional Back View Image Uploads side-by-side */}
+              <div className="grid grid-cols-2 gap-3 border-t border-[#1F1F1F]/40 pt-3">
+                {/* Before Back Upload */}
+                <div className="space-y-1.5">
+                  <label className="text-xs font-bold text-[#666666] uppercase tracking-wider block">Before (Back - Optional)</label>
+                  <div className="border-2 border-dashed border-[#1F1F1F] bg-[#161616] rounded-xl p-4 text-center hover:border-[#FF3A2D]/40 transition-colors relative cursor-pointer h-24 flex flex-col items-center justify-center overflow-hidden">
+                    <input
+                      type="file"
+                      onChange={(e) => handleOptionalFileChange(e, setBeforeBackFile, setBeforeBackPreview)}
+                      accept="image/*"
+                      className="absolute inset-0 opacity-0 cursor-pointer"
+                    />
+                    {beforeBackPreview ? (
+                      <img src={beforeBackPreview} alt="Before Back Preview" className="w-full h-full object-cover absolute inset-0" />
+                    ) : (
+                      <div className="flex flex-col items-center text-[#444444]">
+                        <Upload size={16} className="mb-0.5" />
+                        <span className="text-[9px] font-bold uppercase">Upload Back</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* After Back Upload */}
+                <div className="space-y-1.5">
+                  <label className="text-xs font-bold text-[#666666] uppercase tracking-wider block">After (Back - Optional)</label>
+                  <div className="border-2 border-dashed border-[#1F1F1F] bg-[#161616] rounded-xl p-4 text-center hover:border-[#E8FF00]/40 transition-colors relative cursor-pointer h-24 flex flex-col items-center justify-center overflow-hidden">
+                    <input
+                      type="file"
+                      onChange={(e) => handleOptionalFileChange(e, setAfterBackFile, setAfterBackPreview)}
+                      accept="image/*"
+                      className="absolute inset-0 opacity-0 cursor-pointer"
+                    />
+                    {afterBackPreview ? (
+                      <img src={afterBackPreview} alt="After Back Preview" className="w-full h-full object-cover absolute inset-0" />
+                    ) : (
+                      <div className="flex flex-col items-center text-[#444444]">
+                        <Upload size={16} className="mb-0.5" />
+                        <span className="text-[9px] font-bold uppercase">Upload Back</span>
                       </div>
                     )}
                   </div>
@@ -357,25 +556,23 @@ export function TransformationsManager() {
               {/* Type Inputs */}
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1.5">
-                  <label className="text-xs font-bold text-[#666666] uppercase tracking-wider block">Type (English)</label>
+                  <label className="text-xs font-bold text-[#666666] uppercase tracking-wider block">Type (English - Optional)</label>
                   <input
                     type="text"
                     placeholder="e.g. Fat Loss"
                     value={typeEn}
                     onChange={(e) => setTypeEn(e.target.value)}
                     className="w-full bg-[#161616] border border-[#1F1F1F] rounded-lg py-2 px-3 text-sm text-[#F5F5F5] outline-none focus:border-[#E8FF00]/40 transition-colors"
-                    required
                   />
                 </div>
                 <div className="space-y-1.5">
-                  <label className="text-xs font-bold text-[#666666] uppercase tracking-wider block">Type (Arabic)</label>
+                  <label className="text-xs font-bold text-[#666666] uppercase tracking-wider block">Type (Arabic - Optional)</label>
                   <input
                     type="text"
                     placeholder="مثال: خسارة دهون"
                     value={typeAr}
                     onChange={(e) => setTypeAr(e.target.value)}
                     className="w-full bg-[#161616] border border-[#1F1F1F] rounded-lg py-2 px-3 text-sm text-[#F5F5F5] outline-none focus:border-[#E8FF00]/40 transition-colors text-right"
-                    required
                   />
                 </div>
               </div>

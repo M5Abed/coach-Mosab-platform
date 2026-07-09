@@ -14,7 +14,8 @@ import {
   ShieldAlert,
   ClipboardList,
   ArrowLeftRight,
-  Sparkles
+  Sparkles,
+  MessageSquare
 } from 'lucide-react'
 import { Badge } from '../ui/Badge'
 import { LanguageSelector } from '../ui/LanguageSelector'
@@ -51,6 +52,7 @@ export function Sidebar() {
     { name: language === 'ar' ? "سجل المدفوعات" : "Payments log", path: '/admin/payments', icon: <TrendingUp size={20} /> },
     { name: language === 'ar' ? "إدارة الفيديوهات" : "Videos Manager", path: '/admin/videos', icon: <Video size={20} /> },
     { name: language === 'ar' ? "التحولات قبل وبعد" : "Transformations", path: '/admin/transformations', icon: <Sparkles size={20} /> },
+    { name: language === 'ar' ? "آراء العملاء" : "Testimonials", path: '/admin/testimonials', icon: <MessageSquare size={20} /> },
     { name: language === 'ar' ? "الإعدادات" : "Settings", path: '/dashboard/settings', icon: <Settings size={20} /> },
   ]
 

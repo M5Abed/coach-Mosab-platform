@@ -35,6 +35,7 @@ import DietBuilder from './pages/admin/DietBuilder'
 import VideoManager from './pages/admin/VideoManager'
 import FoodAlternatives from './pages/admin/FoodAlternatives'
 import TransformationsManager from './pages/admin/TransformationsManager'
+import TestimonialsManager from './pages/admin/TestimonialsManager'
 
 function App() {
   const initAuth = useAuthStore((state) => state.initAuth)
@@ -80,8 +81,9 @@ function App() {
           <Route path="workouts/new" element={<WorkoutBuilder />} />
           <Route path="nutrition/new" element={<DietBuilder />} />
           <Route path="food-alternatives" element={<FoodAlternatives />} />
-          <Route path="videos" element={<VideoManager />} />
+           <Route path="videos" element={<VideoManager />} />
           <Route path="transformations" element={<TransformationsManager />} />
+          <Route path="testimonials" element={<TestimonialsManager />} />
         </Route>
 
         {/* Fallback redirect */}

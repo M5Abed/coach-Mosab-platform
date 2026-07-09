@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react'
+import React, { useState, useEffect, useRef, useMemo } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { 
   Check, 
@@ -67,6 +67,152 @@ function Counter({ endValue, duration = 1500, suffix = "" }) {
   )
 }
 
+function ClientTransformationCard({ trans, language }) {
+  const [activeAngle, setActiveAngle] = useState('front')
+  const [isHovered, setIsHovered] = useState(false)
+
+  const availableViews = useMemo(() => {
+    const views = ['front']
+    if (trans.before_side_url || trans.after_side_url) {
+      views.push('side')
+    }
+    if (trans.before_back_url || trans.after_back_url) {
+      views.push('back')
+    }
+    return views
+  }, [trans])
+
+  // Auto cycle on hover
+  useEffect(() => {
+    if (!isHovered || availableViews.length <= 1) return
+
+    const interval = setInterval(() => {
+      setActiveAngle((prev) => {
+        const currentIndex = availableViews.indexOf(prev)
+        const nextIndex = (currentIndex + 1) % availableViews.length
+        return availableViews[nextIndex]
+      })
+    }, 2000)
+
+    return () => clearInterval(interval)
+  }, [isHovered, availableViews])
+
+  return (
+    <div 
+      className="bg-[#111111] border border-[#1F1F1F] rounded-2xl overflow-hidden hover:border-[#E8FF00]/40 transition-all duration-300 flex flex-col group hover:-translate-y-1.5 shadow-xl hover:shadow-[0_10px_30px_rgba(232,255,0,0.02)]"
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => {
+        setIsHovered(false)
+        setActiveAngle('front') // Reset to front on leave
+      }}
+    >
+      {/* Before/After vertical shape side-by-side images container */}
+      <div className="relative flex items-stretch h-[380px] overflow-hidden bg-black border-b border-[#1F1F1F]">
+        
+        {/* Float views indicators / toggle pill */}
+        {availableViews.length > 1 && (
+          <div className="absolute top-4 left-1/2 -translate-x-1/2 flex items-center gap-1 bg-black/60 backdrop-blur-md border border-white/10 px-2 py-1 rounded-full z-30 transition-all duration-300 opacity-0 group-hover:opacity-100">
+            {availableViews.map((angle) => (
+              <button
+                type="button"
+                key={angle}
+                onClick={(e) => {
+                  e.preventDefault()
+                  e.stopPropagation()
+                  setActiveAngle(angle)
+                }}
+                onMouseEnter={(e) => {
+                  e.preventDefault()
+                  e.stopPropagation()
+                  setActiveAngle(angle)
+                }}
+                className={`px-3 py-0.5 text-[9px] font-bebas tracking-wider uppercase rounded-full transition-all duration-300 cursor-pointer ${
+                  activeAngle === angle
+                    ? 'bg-[#E8FF00] text-black font-bold'
+                    : 'text-[#A0A0A0] hover:text-[#F5F5F5]'
+                }`}
+              >
+                {language === 'ar' ? (angle === 'front' ? 'أمام' : angle === 'side' ? 'جانب' : 'خلف') : angle}
+              </button>
+            ))}
+          </div>
+        )}
+
+        {/* Before Half */}
+        <div className="flex-1 relative overflow-hidden h-full">
+          {availableViews.map((angle) => {
+            const imgUrl = angle === 'side' ? (trans.before_side_url || trans.before_image_url) :
+                           angle === 'back' ? (trans.before_back_url || trans.before_image_url) :
+                           trans.before_image_url
+            return (
+              <img
+                key={angle}
+                src={imgUrl}
+                alt={`Before ${angle}`}
+                className={`absolute inset-0 w-full h-full object-cover transition-all duration-700 ${
+                  activeAngle === angle ? 'opacity-100 z-10 scale-100' : 'opacity-0 z-0 scale-95'
+                } group-hover:scale-105 transition-transform duration-500`}
+              />
+            )
+          })}
+          <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent z-10" />
+          <span className="absolute bottom-3 left-3 bg-[#FF3A2D] text-white font-bebas text-xs tracking-wider uppercase px-2.5 py-0.5 rounded shadow-md z-10">
+            {language === 'ar' ? 'قبل' : 'Before'}
+          </span>
+        </div>
+
+        {/* Divider Line */}
+        <div className="absolute top-0 bottom-0 left-1/2 -translate-x-1/2 w-0.5 bg-[#E8FF00]/70 z-20 shadow-[0_0_10px_rgba(232,255,0,0.5)]" />
+
+        {/* After Half */}
+        <div className="flex-1 relative overflow-hidden h-full">
+          {availableViews.map((angle) => {
+            const imgUrl = angle === 'side' ? (trans.after_side_url || trans.after_image_url) :
+                           angle === 'back' ? (trans.after_back_url || trans.after_image_url) :
+                           trans.after_image_url
+            return (
+              <img
+                key={angle}
+                src={imgUrl}
+                alt={`After ${angle}`}
+                className={`absolute inset-0 w-full h-full object-cover transition-all duration-700 ${
+                  activeAngle === angle ? 'opacity-100 z-10 scale-100' : 'opacity-0 z-0 scale-95'
+                } group-hover:scale-105 transition-transform duration-500`}
+              />
+            )
+          })}
+          <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent z-10" />
+          <span className="absolute bottom-3 right-3 bg-[#E8FF00] text-black font-bebas text-xs tracking-wider uppercase px-2.5 py-0.5 rounded shadow-md z-10">
+            {language === 'ar' ? 'بعد' : 'After'}
+          </span>
+        </div>
+      </div>
+
+      {/* Info details */}
+      <div className="p-6 flex flex-col justify-between flex-1 space-y-4">
+        <div className="space-y-3">
+          <div className="flex flex-wrap gap-2.5 items-center">
+            {(trans.type_en || trans.type_ar) && (
+              <span className="bg-[#E8FF00]/10 border border-[#E8FF00]/25 text-[#E8FF00] font-bebas text-xs uppercase px-3 py-1 rounded-full tracking-wide">
+                {language === 'ar' ? (trans.type_ar || trans.type_en) : (trans.type_en || trans.type_ar)}
+              </span>
+            )}
+            <span className="bg-[#161616] border border-[#1F1F1F] text-[#666666] font-bebas text-xs uppercase px-3 py-1 rounded-full tracking-wide">
+              ⏱️ {language === 'ar' ? trans.duration_ar : trans.duration_en}
+            </span>
+          </div>
+
+          {(trans.description_en || trans.description_ar) && (
+            <p className="text-sm text-[#F5F5F5] font-dmsans leading-relaxed">
+              {language === 'ar' ? (trans.description_ar || trans.description_en) : (trans.description_en || trans.description_ar)}
+            </p>
+          )}
+        </div>
+      </div>
+    </div>
+  )
+}
+
 export function Landing() {
   const navigate = useNavigate()
   const { language } = useLanguageStore()
@@ -76,6 +222,8 @@ export function Landing() {
 
   const [transformations, setTransformations] = useState([])
   const [loadingTrans, setLoadingTrans] = useState(true)
+  const [testimonials, setTestimonials] = useState([])
+  const [loadingTestimonials, setLoadingTestimonials] = useState(true)
 
   useEffect(() => {
     const fetchTrans = async () => {
@@ -94,49 +242,27 @@ export function Landing() {
         setLoadingTrans(false)
       }
     }
+
+    const fetchTestimonials = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('testimonials')
+          .select('*')
+          .order('sort_order', { ascending: true })
+          .order('created_at', { ascending: false })
+        if (!error && data) {
+          setTestimonials(data)
+        }
+      } catch (err) {
+        console.error('Error fetching testimonials:', err)
+      } finally {
+        setLoadingTestimonials(false)
+      }
+    }
+
     fetchTrans()
+    fetchTestimonials()
   }, [])
-
-
-  const testimonials = language === 'ar' ? [
-    {
-      name: "عمر كريم",
-      goal: "خسارة دهون وبناء عضلات",
-      rating: 5,
-      quote: "الكوتش مصعب غيّر جسمي تماماً في 12 أسبوعاً فقط. جداول التغذية مرنة وسهلة التخصيص والفيديوهات التعليمية احترافية للغاية."
-    },
-    {
-      name: "مريم شريف",
-      goal: "قوة وتحمل بدني",
-      rating: 5,
-      quote: "إمكانية الدفع عبر فودافون كاش وتفعيل الحساب خلال ساعات أمر رائع. التمارين حماسية ومصممة بدقة لتناسب مستواي."
-    },
-    {
-      name: "طارق علي",
-      goal: "أداء رياضي متقدم",
-      rating: 5,
-      quote: "جدول البدائل الغذائية عبقري! إذا لم يتوفر لدي الشوفان، أستبدله ببديل آخر وتبقى السعرات والماكروز مضبوطة تماماً."
-    }
-  ] : [
-    {
-      name: "Omar Karem",
-      goal: "Fat Loss & Muscle Gain",
-      rating: 5,
-      quote: "Coach Mosab completely transformed my physique in just 12 weeks. The nutrition sheets are customizable and the video guides are professional."
-    },
-    {
-      name: "Mariam Sherif",
-      goal: "Strength & Endurance",
-      rating: 5,
-      quote: "Being able to pay with Vodafone Cash and have my plan active in hours is amazing. The workouts are challenging but scaled perfectly to my level."
-    },
-    {
-      name: "Tarek Aly",
-      goal: "Athletic Performance",
-      rating: 5,
-      quote: "The alternatives sheet is a game-changer! If I don't have oats, I check the swap options and macros remain exactly tracked. Truly elite."
-    }
-  ]
 
   // Auto scroll testimonials
   useEffect(() => {
@@ -395,60 +521,11 @@ export function Landing() {
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
               {transformations.map((trans) => (
-                <div 
+                <ClientTransformationCard 
                   key={trans.id} 
-                  className="bg-[#111111] border border-[#1F1F1F] rounded-2xl overflow-hidden hover:border-[#E8FF00]/40 transition-all duration-300 flex flex-col group hover:-translate-y-1.5 shadow-xl hover:shadow-[0_10px_30px_rgba(232,255,0,0.02)]"
-                >
-                  {/* Before/After vertical shape side-by-side images container */}
-                  <div className="relative flex items-stretch h-[380px] overflow-hidden bg-black border-b border-[#1F1F1F]">
-                    {/* Before Half */}
-                    <div className="flex-1 relative overflow-hidden h-full group-hover:opacity-95 transition-all">
-                      <img 
-                        src={trans.before_image_url} 
-                        alt="Before" 
-                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" 
-                      />
-                      <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent" />
-                      <span className="absolute bottom-3 left-3 bg-[#FF3A2D] text-white font-bebas text-xs tracking-wider uppercase px-2.5 py-0.5 rounded shadow-md z-10">
-                        {language === 'ar' ? 'قبل' : 'Before'}
-                      </span>
-                    </div>
-
-                    {/* Divider Line */}
-                    <div className="absolute top-0 bottom-0 left-1/2 -translate-x-1/2 w-0.5 bg-[#E8FF00]/70 z-20 shadow-[0_0_10px_rgba(232,255,0,0.5)]" />
-
-                    {/* After Half */}
-                    <div className="flex-1 relative overflow-hidden h-full group-hover:opacity-95 transition-all">
-                      <img 
-                        src={trans.after_image_url} 
-                        alt="After" 
-                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" 
-                      />
-                      <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent" />
-                      <span className="absolute bottom-3 right-3 bg-[#E8FF00] text-black font-bebas text-xs tracking-wider uppercase px-2.5 py-0.5 rounded shadow-md z-10">
-                        {language === 'ar' ? 'بعد' : 'After'}
-                      </span>
-                    </div>
-                  </div>
-
-                  {/* Info details */}
-                  <div className="p-6 flex flex-col justify-between flex-1 space-y-4">
-                    <div className="space-y-3">
-                      <div className="flex flex-wrap gap-2.5 items-center">
-                        <span className="bg-[#E8FF00]/10 border border-[#E8FF00]/25 text-[#E8FF00] font-bebas text-xs uppercase px-3 py-1 rounded-full tracking-wide">
-                          {language === 'ar' ? trans.type_ar : trans.type_en}
-                        </span>
-                        <span className="bg-[#161616] border border-[#1F1F1F] text-[#666666] font-bebas text-xs uppercase px-3 py-1 rounded-full tracking-wide">
-                          ⏱️ {language === 'ar' ? trans.duration_ar : trans.duration_en}
-                        </span>
-                      </div>
-
-                      <p className="text-sm text-[#F5F5F5] font-dmsans leading-relaxed">
-                        {language === 'ar' ? trans.description_ar : trans.description_en}
-                      </p>
-                    </div>
-                  </div>
-                </div>
+                  trans={trans} 
+                  language={language} 
+                />
               ))}
             </div>
           </div>
@@ -456,56 +533,58 @@ export function Landing() {
       )}
 
       {/* Testimonials Carousel */}
-      <section className="py-20 px-6 md:px-12 bg-[#111111]/30 border-b border-[#1F1F1F]">
-        <div className="max-w-4xl mx-auto space-y-8 relative">
-          <div className="text-center space-y-4">
-            <span className="font-bebas text-sm text-[#E8FF00] tracking-widest block uppercase">{t.testimonialsLabel}</span>
-            <h2 className="font-bebas text-4xl md:text-5xl text-[#F5F5F5] uppercase tracking-wide">{t.testimonialsTitle}</h2>
-          </div>
-
-          <div className="min-h-[220px] bg-[#161616] border border-[#1F1F1F] rounded-xl p-8 relative flex flex-col justify-between group">
-            {/* Rating */}
-            <div className="flex gap-1 text-[#E8FF00] mb-4">
-              {Array(testimonials[currentTestimonial].rating).fill(0).map((_, i) => (
-                <Star key={i} size={16} fill="#E8FF00" />
-              ))}
+      {testimonials.length > 0 && (
+        <section className="py-20 px-6 md:px-12 bg-[#111111]/30 border-b border-[#1F1F1F]">
+          <div className="max-w-4xl mx-auto space-y-8 relative">
+            <div className="text-center space-y-4">
+              <span className="font-bebas text-sm text-[#E8FF00] tracking-widest block uppercase">{t.testimonialsLabel}</span>
+              <h2 className="font-bebas text-4xl md:text-5xl text-[#F5F5F5] uppercase tracking-wide">{t.testimonialsTitle}</h2>
             </div>
 
-            {/* Quote */}
-            <p className="text-[#F5F5F5] text-base md:text-lg italic leading-relaxed font-dmsans">
-              "{testimonials[currentTestimonial].quote}"
-            </p>
-
-            {/* Client Bio */}
-            <div className="mt-6 flex items-center justify-between border-t border-[#1F1F1F] pt-4">
-              <div>
-                <h4 className="font-bebas text-xl text-[#E8FF00] tracking-wide">
-                  {testimonials[currentTestimonial].name}
-                </h4>
-                <p className="text-xs text-[#666666] font-semibold uppercase tracking-wider">
-                  {language === 'ar' ? "الهدف: " : "Goal: "}{testimonials[currentTestimonial].goal}
-                </p>
+            <div className="min-h-[220px] bg-[#161616] border border-[#1F1F1F] rounded-xl p-8 relative flex flex-col justify-between group">
+              {/* Rating */}
+              <div className="flex gap-1 text-[#E8FF00] mb-4">
+                {Array(testimonials[currentTestimonial].rating || 5).fill(0).map((_, i) => (
+                  <Star key={i} size={16} fill="#E8FF00" />
+                ))}
               </div>
 
-              {/* Navigation controls */}
-              <div className="flex gap-2">
-                <button 
-                  onClick={() => setCurrentTestimonial((prev) => (prev === 0 ? testimonials.length - 1 : prev - 1))}
-                  className="w-8 h-8 rounded border border-[#1F1F1F] flex items-center justify-center text-[#666666] hover:text-[#E8FF00] hover:border-[#E8FF00]/30 transition-all cursor-pointer"
-                >
-                  <ChevronLeft size={18} />
-                </button>
-                <button 
-                  onClick={() => setCurrentTestimonial((prev) => (prev + 1) % testimonials.length)}
-                  className="w-8 h-8 rounded border border-[#1F1F1F] flex items-center justify-center text-[#666666] hover:text-[#E8FF00] hover:border-[#E8FF00]/30 transition-all cursor-pointer"
-                >
-                  <ChevronRight size={18} />
-                </button>
+              {/* Quote */}
+              <p className="text-[#F5F5F5] text-base md:text-lg italic leading-relaxed font-dmsans">
+                "{language === 'ar' ? testimonials[currentTestimonial].quote_ar : testimonials[currentTestimonial].quote_en}"
+              </p>
+
+              {/* Client Bio */}
+              <div className="mt-6 flex items-center justify-between border-t border-[#1F1F1F] pt-4">
+                <div>
+                  <h4 className="font-bebas text-xl text-[#E8FF00] tracking-wide">
+                    {language === 'ar' ? testimonials[currentTestimonial].name_ar : testimonials[currentTestimonial].name_en}
+                  </h4>
+                  <p className="text-xs text-[#666666] font-semibold uppercase tracking-wider">
+                    {language === 'ar' ? "الهدف: " : "Goal: "}{language === 'ar' ? testimonials[currentTestimonial].goal_ar : testimonials[currentTestimonial].goal_en}
+                  </p>
+                </div>
+
+                {/* Navigation controls */}
+                <div className="flex gap-2">
+                  <button 
+                    onClick={() => setCurrentTestimonial((prev) => (prev === 0 ? testimonials.length - 1 : prev - 1))}
+                    className="w-8 h-8 rounded border border-[#1F1F1F] flex items-center justify-center text-[#666666] hover:text-[#E8FF00] hover:border-[#E8FF00]/30 transition-all cursor-pointer"
+                  >
+                    <ChevronLeft size={18} />
+                  </button>
+                  <button 
+                    onClick={() => setCurrentTestimonial((prev) => (prev + 1) % testimonials.length)}
+                    className="w-8 h-8 rounded border border-[#1F1F1F] flex items-center justify-center text-[#666666] hover:text-[#E8FF00] hover:border-[#E8FF00]/30 transition-all cursor-pointer"
+                  >
+                    <ChevronRight size={18} />
+                  </button>
+                </div>
               </div>
             </div>
           </div>
-        </div>
-      </section>
+        </section>
+      )}
 
       {/* Pricing Section */}
       <section id="pricing-section" className="py-20 px-6 md:px-12 max-w-7xl mx-auto border-b border-[#1F1F1F]">

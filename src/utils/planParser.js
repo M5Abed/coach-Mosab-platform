@@ -104,6 +104,57 @@ export function parseWorkoutPlan(plan) {
       continue
     }
 
+    // Check if the line is a details line for the current exercise first!
+    const isDetailsLine = currentExercise && (
+      line.includes('Sets') || 
+      line.includes('Reps') || 
+      line.includes('Rest') || 
+      line.includes('Intensity') || 
+      line.includes('Difficulty') ||
+      line.includes('RIR')
+    )
+
+    if (isDetailsLine) {
+      const setsMatch = line.match(/(\d+)\s*Sets/i)
+      if (setsMatch) currentExercise.sets = Number(setsMatch[1])
+      
+      const repsMatch = line.match(/x\s*([0-9\-\+\s]+)\s*Reps/i) || line.match(/([0-9\-\+\s]+)\s*Reps/i)
+      if (repsMatch) currentExercise.reps = repsMatch[1].trim()
+      
+      const restMatch = line.match(/Rest:\s*([^\s|]+)/i)
+      if (restMatch) currentExercise.rest = restMatch[1].trim()
+      
+      const intensityMatch = line.match(/Intensity:\s*([^|\n]+)/i) || line.match(/Difficulty:\s*([^|\n]+)/i) || line.match(/RIR:\s*([^|\n]+)/i)
+      if (intensityMatch) {
+        const val = intensityMatch[1].trim()
+        currentExercise.difficulty = val
+        if (val.toLowerCase().includes('rir')) {
+          const rirVal = val.toLowerCase()
+          let cleanRir = '—'
+          if (rirVal.includes('0')) cleanRir = '0'
+          else if (rirVal.includes('1')) cleanRir = '1'
+          else if (rirVal.includes('2')) cleanRir = '2'
+          else if (rirVal.includes('3')) cleanRir = '3'
+          currentExercise.rir = cleanRir
+          
+          if (cleanRir === '0' || cleanRir === '1') {
+            currentExercise.dotColor = 'bg-[#FF3A2D]'
+            currentExercise.difficulty = 'Hard'
+          } else if (cleanRir === '2' || cleanRir === '3') {
+            currentExercise.dotColor = 'bg-[#FF8C00]'
+            currentExercise.difficulty = 'Medium'
+          } else {
+            currentExercise.dotColor = 'bg-[#34D399]'
+            currentExercise.difficulty = 'Easy'
+          }
+        } else {
+          const diff = val.toLowerCase()
+          currentExercise.dotColor = diff === 'easy' ? 'bg-[#34D399]' : diff === 'hard' ? 'bg-[#FF3A2D]' : 'bg-[#FF8C00]'
+        }
+      }
+      continue
+    }
+
     // Matches e.g. "1. Deadlift" or "• Lat Pulldown"
     const exerciseMatch = line.match(/^(\d+)\.\s*(.+)$/) || line.match(/^[•*-]\s*(.+)$/)
     
@@ -127,6 +178,7 @@ export function parseWorkoutPlan(plan) {
         sets: 4,
         reps: '10',
         rest: '90s',
+        rir: '—',
         difficulty: 'Medium',
         dotColor: 'bg-[#FF8C00]',
         guide: 'Maintain strict control over both eccentric and concentric phases.',
@@ -163,6 +215,12 @@ export function parseWorkoutPlan(plan) {
       const sets = Number(spaceMatch[2])
       const reps = spaceMatch[3].trim()
       const rir = spaceMatch[4].trim()
+      let cleanRir = '—'
+      const rVal = rir.toLowerCase()
+      if (rVal.includes('0')) cleanRir = '0'
+      else if (rVal.includes('1')) cleanRir = '1'
+      else if (rVal.includes('2')) cleanRir = '2'
+      else if (rVal.includes('3')) cleanRir = '3'
 
       exercises.push({
         id: 'parsed-ex-' + (exercises.length + 1),
@@ -170,44 +228,13 @@ export function parseWorkoutPlan(plan) {
         sets: sets,
         reps: reps,
         rest: '90s',
-        difficulty: rir === '0' || rir === '^0' ? 'Hard' : rir === '1' ? 'Medium' : 'Easy',
-        dotColor: rir === '0' || rir === '^0' ? 'bg-[#FF3A2D]' : rir === '1' ? 'bg-[#FF8C00]' : 'bg-[#34D399]',
-        guide: `RIR (Reps in Reserve): ${rir}. Keep form stable.`,
+        rir: cleanRir,
+        difficulty: cleanRir === '0' || cleanRir === '1' ? 'Hard' : cleanRir === '2' || cleanRir === '3' ? 'Medium' : 'Easy',
+        dotColor: cleanRir === '0' || cleanRir === '1' ? 'bg-[#FF3A2D]' : cleanRir === '2' || cleanRir === '3' ? 'bg-[#FF8C00]' : 'bg-[#34D399]',
+        guide: `RIR (Reps in Reserve): ${cleanRir}. Keep form stable.`,
         tip: `Maintain control and focus on the target muscles.`,
         day: currentDay
       })
-    } else if (currentExercise && (line.includes('Sets') || line.includes('Reps') || line.includes('Rest') || line.includes('Intensity') || line.includes('Difficulty'))) {
-      const setsMatch = line.match(/(\d+)\s*Sets/i)
-      if (setsMatch) currentExercise.sets = Number(setsMatch[1])
-      
-      const repsMatch = line.match(/x\s*([0-9\-\s]+)\s*Reps/i) || line.match(/(\d+)\s*Reps/i)
-      if (repsMatch) currentExercise.reps = repsMatch[1].trim()
-      
-      const restMatch = line.match(/Rest:\s*([^\s|]+)/i)
-      if (restMatch) currentExercise.rest = restMatch[1].trim()
-      
-      const intensityMatch = line.match(/Intensity:\s*([^|\n]+)/i) || line.match(/Difficulty:\s*([^|\n]+)/i) || line.match(/RIR:\s*([^|\n]+)/i)
-      if (intensityMatch) {
-        const val = intensityMatch[1].trim()
-        currentExercise.difficulty = val
-        if (val.toLowerCase().includes('rir')) {
-          currentExercise.rir = val
-          const rirVal = val.toLowerCase()
-          if (rirVal.includes('0') || rirVal.includes('1')) {
-            currentExercise.dotColor = 'bg-[#FF3A2D]'
-            currentExercise.difficulty = 'Hard'
-          } else if (rirVal.includes('2') || rirVal.includes('3')) {
-            currentExercise.dotColor = 'bg-[#FF8C00]'
-            currentExercise.difficulty = 'Medium'
-          } else {
-            currentExercise.dotColor = 'bg-[#34D399]'
-            currentExercise.difficulty = 'Easy'
-          }
-        } else {
-          const diff = val.toLowerCase()
-          currentExercise.dotColor = diff === 'easy' ? 'bg-[#34D399]' : diff === 'hard' ? 'bg-[#FF3A2D]' : 'bg-[#FF8C00]'
-        }
-      }
     }
   }
   if (currentExercise) {

@@ -25,8 +25,10 @@ export function Settings() {
       setLevel(user.fitness_level || 'beginner')
     }
   }, [user?.id]) // re-sync only when user identity changes
+  const [currentPassword, setCurrentPassword] = useState('')
   const [newPassword, setNewPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
+  const [passwordLoading, setPasswordLoading] = useState(false)
 
   const handleUpdateProfile = async (e) => {
     e.preventDefault()
@@ -46,6 +48,10 @@ export function Settings() {
 
   const handlePasswordSubmit = async (e) => {
     e.preventDefault()
+    if (!currentPassword) {
+      toast.error('Please enter your current password.')
+      return
+    }
     if (newPassword.length < 8) {
       toast.error('Password must be at least 8 characters long.')
       return
@@ -54,14 +60,33 @@ export function Settings() {
       toast.error('Passwords do not match.')
       return
     }
+
+    setPasswordLoading(true)
     try {
-      const { error } = await supabase.auth.updateUser({ password: newPassword })
-      if (error) throw error
+      // 1. Verify current password by trying to sign in/re-authenticate
+      const { error: signInError } = await supabase.auth.signInWithPassword({
+        email: user.email,
+        password: currentPassword
+      })
+
+      if (signInError) {
+        toast.error('Incorrect current password.')
+        setPasswordLoading(false)
+        return
+      }
+
+      // 2. If verification succeeded, update the password
+      const { error: updateError } = await supabase.auth.updateUser({ password: newPassword })
+      if (updateError) throw updateError
+
       toast.success('Password updated successfully!')
+      setCurrentPassword('')
       setNewPassword('')
       setConfirmPassword('')
     } catch (err) {
       toast.error(err.message || 'Password update failed.')
+    } finally {
+      setPasswordLoading(false)
     }
   }
 
@@ -227,6 +252,18 @@ export function Settings() {
               
               <form onSubmit={handlePasswordSubmit} className="space-y-4">
                 <div className="space-y-1.5">
+                  <label className="text-xs font-bold text-[#666666] uppercase tracking-wider block">Current Password</label>
+                  <input
+                    type="password"
+                    value={currentPassword}
+                    onChange={(e) => setCurrentPassword(e.target.value)}
+                    placeholder="Enter current password"
+                    className="w-full bg-[#161616] border border-[#1F1F1F] rounded-lg py-2.5 px-4 text-sm text-[#F5F5F5] outline-none"
+                    required
+                  />
+                </div>
+
+                <div className="space-y-1.5">
                   <label className="text-xs font-bold text-[#666666] uppercase tracking-wider block">New Password</label>
                   <input
                     type="password"
@@ -252,7 +289,7 @@ export function Settings() {
                   />
                 </div>
 
-                <Button type="submit" className="font-bebas uppercase tracking-wider text-sm py-2.5 px-6">
+                <Button type="submit" loading={passwordLoading} className="font-bebas uppercase tracking-wider text-sm py-2.5 px-6">
                   Reset Password
                 </Button>
               </form>

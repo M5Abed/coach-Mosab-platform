@@ -20,7 +20,8 @@ import {
   Check,
   X,
   Send,
-  FileText
+  FileText,
+  AlertTriangle
 } from 'lucide-react'
 
 export function ManagePlans() {
@@ -33,6 +34,7 @@ export function ManagePlans() {
   const [loadingSubs, setLoadingSubs] = useState(false)
   const [searchTerm, setSearchTerm] = useState('')
   const [activeTab, setActiveTab] = useState('workout') // 'workout' | 'nutrition'
+  const [deleteConfirm, setDeleteConfirm] = useState(null) // { id, title } | null
   
   // Selection and Editor states
   const [selectedPlan, setSelectedPlan] = useState(null) // plan template object
@@ -331,8 +333,10 @@ export function ManagePlans() {
   }
 
   // Delete Template handler
-  const handleDeleteTemplate = async (planId) => {
-    if (!window.confirm(language === 'ar' ? 'هل أنت متأكد من حذف هذه الخطة بالكامل؟' : 'Are you sure you want to delete this template permanently?')) return
+  const confirmDeleteTemplate = async () => {
+    if (!deleteConfirm) return
+    const { id: planId } = deleteConfirm
+    setDeleteConfirm(null)
     try {
       const { error } = await supabase
         .from('plans')
@@ -580,7 +584,7 @@ export function ManagePlans() {
 
                     <div className="flex gap-2">
                       <button 
-                        onClick={(e) => { e.stopPropagation(); handleDeleteTemplate(p.id) }}
+                        onClick={(e) => { e.stopPropagation(); setDeleteConfirm({ id: p.id, title: p.title }) }}
                         className="p-1 rounded hover:bg-[#1C1C1C] text-red-500 hover:text-red-400 transition-colors cursor-pointer outline-none"
                         title="Delete Template"
                       >
@@ -1087,6 +1091,67 @@ export function ManagePlans() {
                   {submittingAssignment ? 'Assigning...' : 'Confirm Assign'}
                 </Button>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Delete Confirmation Modal ─────────────────────────────── */}
+      {deleteConfirm && (
+        <div className="fixed inset-0 z-[200] flex items-center justify-center p-4">
+          {/* Backdrop */}
+          <div
+            className="absolute inset-0 bg-black/70 backdrop-blur-sm"
+            onClick={() => setDeleteConfirm(null)}
+          />
+
+          {/* Dialog */}
+          <div className="relative z-10 w-full max-w-sm bg-[#111111] border border-[#2a2a2a] rounded-2xl p-6 shadow-2xl space-y-5">
+            {/* Icon */}
+            <div className="flex items-center justify-center w-14 h-14 rounded-full bg-[#FF3A2D]/10 border border-[#FF3A2D]/25 mx-auto">
+              <AlertTriangle size={26} className="text-[#FF3A2D]" />
+            </div>
+
+            {/* Text */}
+            <div className="text-center space-y-1.5">
+              <h3 className="font-bebas text-2xl tracking-wide text-[#F5F5F5] uppercase">
+                {language === 'ar' ? 'حذف القالب' : 'Delete Template'}
+              </h3>
+              <p className="text-sm text-[#888] leading-relaxed">
+                {language === 'ar' ? (
+                  <>
+                    هل أنت متأكد من حذف قالب الخطة{' '}
+                    <span className="text-[#F5F5F5] font-semibold">{deleteConfirm.title}</span> بشكل نهائي؟
+                  </>
+                ) : (
+                  <>
+                    Are you sure you want to permanently delete the template{' '}
+                    <span className="text-[#F5F5F5] font-semibold">{deleteConfirm.title}</span>?
+                  </>
+                )}
+                <br />
+                <span className="text-xs text-[#FF3A2D]/80">
+                  {language === 'ar' ? 'لا يمكن التراجع عن هذا الإجراء.' : 'This action cannot be undone.'}
+                </span>
+              </p>
+            </div>
+
+            {/* Actions */}
+            <div className="flex gap-3 pt-1">
+              <button
+                type="button"
+                onClick={() => setDeleteConfirm(null)}
+                className="flex-1 py-2.5 rounded-xl border border-[#2a2a2a] text-sm font-bold text-[#888] hover:text-[#F5F5F5] hover:border-[#444] transition-all cursor-pointer"
+              >
+                {language === 'ar' ? 'إلغاء' : 'Cancel'}
+              </button>
+              <button
+                type="button"
+                onClick={confirmDeleteTemplate}
+                className="flex-1 py-2.5 rounded-xl bg-[#FF3A2D] hover:bg-[#e02d21] text-white text-sm font-bold transition-all cursor-pointer shadow-[0_0_16px_rgba(255,58,45,0.25)]"
+              >
+                {language === 'ar' ? 'نعم، احذف' : 'Yes, Delete'}
+              </button>
             </div>
           </div>
         </div>

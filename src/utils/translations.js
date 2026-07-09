@@ -60,6 +60,8 @@ export const translations = {
     // Testimonials
     testimonialsLabel: "TESTIMONIALS",
     testimonialsTitle: "WHAT THEY SAY",
+    transformationsTitle: "CLIENT TRANSFORMATIONS",
+    transformationsSubtitle: "Real people. Real results. Witness the physical and mental evolutions under Coach Mosab's elite guidance.",
 
     // Pricing
     pricingTitle: "INVEST IN YOUR BODY",
@@ -282,6 +284,8 @@ export const translations = {
     // Testimonials
     testimonialsLabel: "آراء عملائنا",
     testimonialsTitle: "ماذا يقولون عنا",
+    transformationsTitle: "تحولات وقصص نجاح الأبطال",
+    transformationsSubtitle: "أشخاص حقيقيون.. نتائج حقيقية. شاهد التطور الجسدي والذهني تحت الإشراف المباشر للكوتش مصعب.",
 
     // Pricing
     pricingTitle: "استثمر في صحتك وبدنك",

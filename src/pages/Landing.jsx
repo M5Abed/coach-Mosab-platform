@@ -19,6 +19,7 @@ import { useLanguageStore } from '../store/languageStore'
 import { translations } from '../utils/translations'
 import { LanguageSelector } from '../components/ui/LanguageSelector'
 import { useAuthStore } from '../store/authStore'
+import { supabase } from '../lib/supabase'
 
 // Animated intersection count-up counter component
 function Counter({ endValue, duration = 1500, suffix = "" }) {
@@ -72,6 +73,29 @@ export function Landing() {
   const t = translations[language]
   const [currentTestimonial, setCurrentTestimonial] = useState(0)
   const user = useAuthStore((state) => state.user)
+
+  const [transformations, setTransformations] = useState([])
+  const [loadingTrans, setLoadingTrans] = useState(true)
+
+  useEffect(() => {
+    const fetchTrans = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('transformations')
+          .select('*')
+          .order('sort_order', { ascending: true })
+          .order('created_at', { ascending: false })
+        if (!error && data) {
+          setTransformations(data)
+        }
+      } catch (err) {
+        console.error('Error fetching transformations:', err)
+      } finally {
+        setLoadingTrans(false)
+      }
+    }
+    fetchTrans()
+  }, [])
 
 
   const testimonials = language === 'ar' ? [
@@ -352,6 +376,84 @@ export function Landing() {
 
 
 
+
+      {/* Client Transformations Section */}
+      {transformations.length > 0 && (
+        <section className="py-20 px-6 md:px-12 max-w-7xl mx-auto border-b border-[#1F1F1F] relative">
+          <div className="space-y-12">
+            <div className="text-center space-y-4">
+              <span className="font-bebas text-sm text-[#E8FF00] tracking-widest block uppercase">
+                {language === 'ar' ? 'النتائج والتحولات' : 'RESULTS & EVOLUTIONS'}
+              </span>
+              <h2 className="font-bebas text-4xl md:text-5xl lg:text-6xl text-[#F5F5F5] uppercase tracking-wide">
+                {t.transformationsTitle}
+              </h2>
+              <p className="text-[#666666] max-w-2xl mx-auto text-sm md:text-base leading-relaxed">
+                {t.transformationsSubtitle}
+              </p>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+              {transformations.map((trans) => (
+                <div 
+                  key={trans.id} 
+                  className="bg-[#111111] border border-[#1F1F1F] rounded-2xl overflow-hidden hover:border-[#E8FF00]/40 transition-all duration-300 flex flex-col group hover:-translate-y-1.5 shadow-xl hover:shadow-[0_10px_30px_rgba(232,255,0,0.02)]"
+                >
+                  {/* Before/After vertical shape side-by-side images container */}
+                  <div className="relative flex items-stretch h-[380px] overflow-hidden bg-black border-b border-[#1F1F1F]">
+                    {/* Before Half */}
+                    <div className="flex-1 relative overflow-hidden h-full group-hover:opacity-95 transition-all">
+                      <img 
+                        src={trans.before_image_url} 
+                        alt="Before" 
+                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" 
+                      />
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent" />
+                      <span className="absolute bottom-3 left-3 bg-[#FF3A2D] text-white font-bebas text-xs tracking-wider uppercase px-2.5 py-0.5 rounded shadow-md z-10">
+                        {language === 'ar' ? 'قبل' : 'Before'}
+                      </span>
+                    </div>
+
+                    {/* Divider Line */}
+                    <div className="absolute top-0 bottom-0 left-1/2 -translate-x-1/2 w-0.5 bg-[#E8FF00]/70 z-20 shadow-[0_0_10px_rgba(232,255,0,0.5)]" />
+
+                    {/* After Half */}
+                    <div className="flex-1 relative overflow-hidden h-full group-hover:opacity-95 transition-all">
+                      <img 
+                        src={trans.after_image_url} 
+                        alt="After" 
+                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" 
+                      />
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent" />
+                      <span className="absolute bottom-3 right-3 bg-[#E8FF00] text-black font-bebas text-xs tracking-wider uppercase px-2.5 py-0.5 rounded shadow-md z-10">
+                        {language === 'ar' ? 'بعد' : 'After'}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Info details */}
+                  <div className="p-6 flex flex-col justify-between flex-1 space-y-4">
+                    <div className="space-y-3">
+                      <div className="flex flex-wrap gap-2.5 items-center">
+                        <span className="bg-[#E8FF00]/10 border border-[#E8FF00]/25 text-[#E8FF00] font-bebas text-xs uppercase px-3 py-1 rounded-full tracking-wide">
+                          {language === 'ar' ? trans.type_ar : trans.type_en}
+                        </span>
+                        <span className="bg-[#161616] border border-[#1F1F1F] text-[#666666] font-bebas text-xs uppercase px-3 py-1 rounded-full tracking-wide">
+                          ⏱️ {language === 'ar' ? trans.duration_ar : trans.duration_en}
+                        </span>
+                      </div>
+
+                      <p className="text-sm text-[#F5F5F5] font-dmsans leading-relaxed">
+                        {language === 'ar' ? trans.description_ar : trans.description_en}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+      )}
 
       {/* Testimonials Carousel */}
       <section className="py-20 px-6 md:px-12 bg-[#111111]/30 border-b border-[#1F1F1F]">

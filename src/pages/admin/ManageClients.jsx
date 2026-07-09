@@ -5,7 +5,11 @@ import { Badge } from '../../components/ui/Badge'
 import { supabase } from '../../lib/supabase'
 import { toast } from '../../store/toastStore'
 import { parseWorkoutPlan, parseNutritionPlan } from '../../utils/planParser'
-import { Eye, Edit3, Trash2, Search, Plus, Save, Dumbbell, Apple, AlertTriangle, RefreshCw, FileText, ChevronDown, ChevronUp } from 'lucide-react'
+import { Eye, Edit3, Trash2, Search, Plus, Save, Dumbbell, Apple, AlertTriangle, RefreshCw, FileText, ChevronDown, ChevronUp, ArrowLeftRight, X, GripVertical } from 'lucide-react'
+import { Modal } from '../../components/ui/Modal'
+import { DndContext, closestCenter, PointerSensor, useSensor, useSensors } from '@dnd-kit/core'
+import { SortableContext, verticalListSortingStrategy, useSortable, arrayMove } from '@dnd-kit/sortable'
+
 
 const activityLabels = {
   desk: 'Desk / Low Activity',
@@ -90,6 +94,201 @@ const failureReasonsLabels = {
   cost: 'Cost',
 }
 
+// Plan helper parsers for the GUI editor
+const generateUniqueId = () => `ex-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
+
+const loadWorkoutPlanForEditing = (workoutPlanRaw) => {
+  const parsed = parseWorkoutPlan(workoutPlanRaw)
+  if (!parsed) {
+    return {
+      title: 'Custom Workout Plan',
+      trainingDays: 3,
+      days: [
+        { label: 'Day 1', exercises: [{ id: generateUniqueId(), name: '', sets: 3, reps: '8:10', rir: '1', rest: '90s' }] },
+        { label: 'Day 2', exercises: [{ id: generateUniqueId(), name: '', sets: 3, reps: '8:10', rir: '1', rest: '90s' }] },
+        { label: 'Day 3', exercises: [{ id: generateUniqueId(), name: '', sets: 3, reps: '8:10', rir: '1', rest: '90s' }] },
+      ]
+    }
+  }
+
+  // If there's already a structured 'days' array, use it
+  if (parsed.days && Array.isArray(parsed.days) && parsed.days.length > 0) {
+    return {
+      title: parsed.title || 'Custom Workout Plan',
+      trainingDays: parsed.days.length,
+      days: parsed.days.map((d, dIdx) => ({
+        label: d.label || 'Day',
+        exercises: d.exercises?.map((ex, exIdx) => ({
+          id: ex.id || `ex-${Date.now()}-${dIdx}-${exIdx}-${Math.random().toString(36).substr(2, 5)}`,
+          name: ex.name || '',
+          sets: ex.sets || 3,
+          reps: ex.reps || '8:10',
+          rir: ex.rir ? String(ex.rir).replace(/\D/g, '') : '1', // extract digits safely
+          rest: ex.rest || '90s'
+        })) || []
+      }))
+    }
+  }
+
+  // Otherwise, group exercises from parsed.exercises
+  const exercises = parsed.exercises || []
+  const maxDay = Math.max(1, ...exercises.map(ex => Number(ex.day || 1)))
+  const days = Array.from({ length: maxDay }, (_, i) => {
+    const dayNum = i + 1
+    const dayExercises = exercises
+      .filter(ex => Number(ex.day || 1) === dayNum)
+      .map((ex, exIdx) => ({
+        id: ex.id || `ex-${Date.now()}-${dayNum}-${exIdx}-${Math.random().toString(36).substr(2, 5)}`,
+        name: ex.name || '',
+        sets: ex.sets || 3,
+        reps: ex.reps || '8:10',
+        rir: ex.rir ? String(ex.rir).replace(/\D/g, '') : '1',
+        rest: ex.rest || '90s'
+      }))
+
+    return {
+      label: `Day ${dayNum}`,
+      exercises: dayExercises.length > 0 ? dayExercises : [{ id: generateUniqueId(), name: '', sets: 3, reps: '8:10', rir: '1', rest: '90s' }]
+    }
+  })
+
+  return {
+    title: parsed.title || 'Custom Workout Plan',
+    trainingDays: days.length,
+    days
+  }
+}
+
+const loadNutritionPlanForEditing = (nutritionPlanRaw) => {
+  const parsed = parseNutritionPlan(nutritionPlanRaw)
+  if (!parsed) {
+    return {
+      calories: 2200,
+      macros: { protein: 160, carbs: 220, fat: 65 },
+      meals: [{ name: 'Breakfast', time: '7:00 AM', foods: [{ name: '', qty: '' }] }]
+    }
+  }
+
+  const meals = parsed.meals?.map(m => ({
+    name: m.name || '',
+    time: m.time || 'Anytime',
+    foods: m.foods?.map(f => ({
+      name: f.name || '',
+      qty: f.qty || ''
+    })) || [{ name: '', qty: '' }]
+  })) || [{ name: 'Breakfast', time: '7:00 AM', foods: [{ name: '', qty: '' }] }]
+
+  return {
+    calories: parsed.calories || 2200,
+    macros: {
+      protein: parsed.macros?.protein || 160,
+      carbs: parsed.macros?.carbs || 220,
+      fat: parsed.macros?.fat || 65
+    },
+    meals
+  }
+}
+
+function SortableExerciseRow({ ex, index, onUpdate, onRemove }) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging
+  } = useSortable({ id: ex.id })
+
+  const style = transform ? {
+    transform: `translate3d(${transform.x}px, ${transform.y}px, 0)`,
+    transition,
+    zIndex: isDragging ? 50 : 'auto',
+    opacity: isDragging ? 0.6 : 1,
+    position: 'relative'
+  } : {
+    position: 'relative'
+  }
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      className="bg-[#0A0A0A] border border-[#1F1F1F] rounded-xl p-3.5 space-y-2.5 relative group"
+    >
+      {/* Remove button */}
+      <button
+        type="button"
+        onClick={() => onRemove(index)}
+        className="absolute top-3 right-3 text-[#444] hover:text-red-500 transition-colors opacity-0 group-hover:opacity-100 cursor-pointer z-10"
+      >
+        <Trash2 size={14} />
+      </button>
+
+      <div className="flex gap-2 items-center">
+        {/* Grip Handler */}
+        <div
+          {...attributes}
+          {...listeners}
+          className="cursor-grab active:cursor-grabbing text-[#555] hover:text-[#E8FF00] p-1 rounded hover:bg-[#161616] flex items-center justify-center transition-colors touch-none"
+        >
+          <GripVertical size={14} />
+        </div>
+        <span className="font-bebas text-sm text-[#E8FF00] w-5 select-none">#{index + 1}</span>
+        <input
+          type="text"
+          value={ex.name}
+          onChange={(e) => onUpdate(index, 'name', e.target.value)}
+          placeholder="Exercise Name (e.g., Bench Press)"
+          className="flex-1 bg-transparent border-b border-[#1F1F1F] focus:border-[#E8FF00]/40 text-xs text-[#F5F5F5] outline-none py-0.5"
+        />
+      </div>
+
+      <div className="grid grid-cols-4 gap-2">
+        <div className="space-y-1">
+          <span className="block text-[8px] text-[#555] uppercase font-bold">Sets</span>
+          <select
+            value={ex.sets}
+            onChange={(e) => onUpdate(index, 'sets', Number(e.target.value))}
+            className="w-full bg-[#161616] border border-[#1F1F1F] rounded-lg px-2 py-1 text-xs text-[#F5F5F5] outline-none"
+          >
+            {[1, 2, 3, 4, 5, 6, 7, 8].map(n => <option key={n} value={n}>{n}</option>)}
+          </select>
+        </div>
+        <div className="space-y-1">
+          <span className="block text-[8px] text-[#555] uppercase font-bold">Reps</span>
+          <input
+            type="text"
+            value={ex.reps}
+            onChange={(e) => onUpdate(index, 'reps', e.target.value)}
+            placeholder="8:10 or 12"
+            className="w-full bg-[#161616] border border-[#1F1F1F] rounded-lg px-2 py-1 text-xs text-[#F5F5F5] outline-none"
+          />
+        </div>
+        <div className="space-y-1">
+          <span className="block text-[8px] text-[#555] uppercase font-bold">RIR</span>
+          <select
+            value={ex.rir}
+            onChange={(e) => onUpdate(index, 'rir', e.target.value)}
+            className="w-full bg-[#161616] border border-[#1F1F1F] rounded-lg px-2 py-1 text-xs text-[#F5F5F5] outline-none"
+          >
+            {['0', '1', '2', '3', '—'].map(v => <option key={v} value={v}>{v === '—' ? '—' : `${v} RIR`}</option>)}
+          </select>
+        </div>
+        <div className="space-y-1">
+          <span className="block text-[8px] text-[#555] uppercase font-bold">Rest</span>
+          <select
+            value={ex.rest}
+            onChange={(e) => onUpdate(index, 'rest', e.target.value)}
+            className="w-full bg-[#161616] border border-[#1F1F1F] rounded-lg px-2 py-1 text-xs text-[#F5F5F5] outline-none"
+          >
+            {['30s', '45s', '60s', '90s', '120s', '150s', '180s'].map(v => <option key={v} value={v}>{v}</option>)}
+          </select>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 export function ManageClients() {
   const [clients, setClients] = useState([])
   const [loading, setLoading] = useState(true)
@@ -102,6 +301,24 @@ export function ManageClients() {
   const [nutritionPlanText, setNutritionPlanText] = useState('')
   const [savingPlans, setSavingPlans] = useState(false)
 
+  // Premium GUI Plan Editor Modal states
+  const [showEditPlanModal, setShowEditPlanModal] = useState(false)
+  const [editPlanTab, setEditPlanTab] = useState('workout') // 'workout' | 'nutrition'
+  const [editWorkoutTitle, setEditWorkoutTitle] = useState('')
+  const [editTrainingDays, setEditTrainingDays] = useState(3)
+  const [editActiveDay, setEditActiveDay] = useState(0)
+  const [editDays, setEditDays] = useState([
+    { label: 'Day 1', exercises: [{ id: 'init-1', name: '', sets: 3, reps: '8:10', rir: '1', rest: '90s' }] },
+    { label: 'Day 2', exercises: [{ id: 'init-2', name: '', sets: 3, reps: '8:10', rir: '1', rest: '90s' }] },
+    { label: 'Day 3', exercises: [{ id: 'init-3', name: '', sets: 3, reps: '8:10', rir: '1', rest: '90s' }] },
+  ])
+  const [editCalories, setEditCalories] = useState(2200)
+  const [editProtein, setEditProtein] = useState(160)
+  const [editCarbs, setEditCarbs] = useState(220)
+  const [editFat, setEditFat] = useState(65)
+  const [editMeals, setEditMeals] = useState([{ name: 'Breakfast', time: '7:00 AM', foods: [{ name: '', qty: '' }] }])
+  const [swapSourceDayIdx, setSwapSourceDayIdx] = useState(null)
+
   // Profile editing states
   const [isEditingProfile, setIsEditingProfile] = useState(false)
   const [editName, setEditName] = useState('')
@@ -110,6 +327,9 @@ export function ManageClients() {
   const [editStatus, setEditStatus] = useState('inactive')
   const [savingProfile, setSavingProfile] = useState(false)
   const [isQuestionnaireOpen, setIsQuestionnaireOpen] = useState(false)
+
+  // Delete confirmation modal state
+  const [deleteConfirm, setDeleteConfirm] = useState(null) // { id, name } | null
 
   const fetchClients = useCallback(async () => {
     setLoading(true)
@@ -202,41 +422,199 @@ export function ManageClients() {
     }
   }
 
-  const handleSavePlans = async () => {
+  // Premium GUI Plan Editor handlers
+  const handleOpenEditPlanModal = () => {
+    if (!selectedClient) return
+    
+    // Load workout plan
+    const loadedWorkout = loadWorkoutPlanForEditing(selectedClient.workout_plan)
+    setEditWorkoutTitle(loadedWorkout.title)
+    setEditDays(loadedWorkout.days)
+    setEditTrainingDays(loadedWorkout.days.length)
+    setEditActiveDay(0)
+    setSwapSourceDayIdx(null)
+
+    // Load nutrition plan
+    const loadedNutrition = loadNutritionPlanForEditing(selectedClient.nutrition_plan)
+    setEditCalories(loadedNutrition.calories)
+    setEditProtein(loadedNutrition.macros.protein)
+    setEditCarbs(loadedNutrition.macros.carbs)
+    setEditFat(loadedNutrition.macros.fat)
+    setEditMeals(loadedNutrition.meals)
+
+    setEditPlanTab('workout')
+    setShowEditPlanModal(true)
+  }
+
+  const handleEditTrainingDaysChange = (count) => {
+    const n = Number(count)
+    setEditTrainingDays(n)
+    setEditDays(prev => {
+      if (n > prev.length) {
+        return [
+          ...prev,
+          ...Array.from({ length: n - prev.length }, (_, i) => ({
+            label: `Day ${prev.length + i + 1}`,
+            exercises: [{ id: generateUniqueId(), name: '', sets: 3, reps: '8:10', rir: '1', rest: '90s' }]
+          }))
+        ]
+      }
+      return prev.slice(0, n)
+    })
+    if (editActiveDay >= n) setEditActiveDay(n - 1)
+  }
+
+  const addEditExercise = () => setEditDays(prev => prev.map((d, i) => i === editActiveDay ? { ...d, exercises: [...d.exercises, { id: generateUniqueId(), name: '', sets: 3, reps: '8:10', rir: '1', rest: '90s' }] } : d))
+  const removeEditExercise = (idx) => setEditDays(prev => prev.map((d, i) => i === editActiveDay ? { ...d, exercises: d.exercises.filter((_, ei) => ei !== idx) } : d))
+  const updateEditExercise = (idx, field, value) => setEditDays(prev => prev.map((d, i) => i === editActiveDay ? { ...d, exercises: d.exercises.map((ex, ei) => ei === idx ? { ...ex, [field]: value } : ex) } : d))
+  const updateEditDayLabel = (dayIdx, label) => setEditDays(prev => prev.map((d, i) => i === dayIdx ? { ...d, label } : d))
+
+  // DND-Kit configuration for exercise sorting
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        delay: 50,
+        distance: 8,
+      },
+    })
+  )
+
+  const handleDragEnd = (event) => {
+    const { active, over } = event
+    if (!over || active.id === over.id) return
+
+    setEditDays(prev => prev.map((day, idx) => {
+      if (idx !== editActiveDay) return day
+      const oldIndex = day.exercises.findIndex(ex => ex.id === active.id)
+      const newIndex = day.exercises.findIndex(ex => ex.id === over.id)
+      if (oldIndex === -1 || newIndex === -1) return day
+      return {
+        ...day,
+        exercises: arrayMove(day.exercises, oldIndex, newIndex)
+      }
+    }))
+  }
+
+  const handleDayTabClick = (idx) => {
+    if (swapSourceDayIdx !== null) {
+      if (swapSourceDayIdx === idx) {
+        setSwapSourceDayIdx(null)
+      } else {
+        setEditDays(prev => {
+          const updated = [...prev]
+          const temp = updated[swapSourceDayIdx]
+          updated[swapSourceDayIdx] = updated[idx]
+          updated[idx] = temp
+          return updated
+        })
+        toast.success(`Swapped ${editDays[swapSourceDayIdx]?.label || `Day ${swapSourceDayIdx + 1}`} with ${editDays[idx]?.label || `Day ${idx + 1}`}!`)
+        setSwapSourceDayIdx(null)
+        setEditActiveDay(idx)
+      }
+    } else {
+      setEditActiveDay(idx)
+    }
+  }
+
+  const addEditMeal = () => setEditMeals(prev => [...prev, { name: '', time: '', foods: [{ name: '', qty: '' }] }])
+  const removeEditMeal = (idx) => setEditMeals(prev => prev.filter((_, i) => i !== idx))
+  const updateEditMeal = (idx, field, value) => setEditMeals(prev => prev.map((m, i) => i === idx ? { ...m, [field]: value } : m))
+  const addEditFood = (mealIdx) => setEditMeals(prev => prev.map((m, i) => i === mealIdx ? { ...m, foods: [...m.foods, { name: '', qty: '' }] } : m))
+  const removeEditFood = (mealIdx, foodIdx) => setEditMeals(prev => prev.map((m, i) => i === mealIdx ? { ...m, foods: m.foods.filter((_, fi) => fi !== foodIdx) } : m))
+  const updateEditFood = (mealIdx, foodIdx, field, value) => setEditMeals(prev => prev.map((m, i) => i === mealIdx ? { ...m, foods: m.foods.map((f, fi) => fi === foodIdx ? { ...f, [field]: value } : f) } : m))
+
+  const handleSaveEditPlans = async () => {
     if (!selectedClient) return
     setSavingPlans(true)
     try {
+      // 1. Build structured workout plan
+      const daysData = editDays.map((day, di) => {
+        const exercises = day.exercises.filter(ex => ex.name.trim()).map((ex, ei) => ({
+          id: `d${di+1}-ex-${ei+1}`,
+          name: ex.name.trim(),
+          sets: Number(ex.sets) || 3,
+          reps: ex.reps || '10',
+          rest: ex.rest || '90s',
+          rir: ex.rir && ex.rir !== '—' ? `${ex.rir} RIR` : undefined,
+          difficulty: ex.rir === '0' ? 'Hard' : ex.rir === '1' ? 'Medium' : 'Easy',
+          dotColor: ex.rir === '0' ? 'bg-[#FF3A2D]' : ex.rir === '1' ? 'bg-[#FF8C00]' : 'bg-[#34D399]',
+          guide: `RIR: ${ex.rir}. Keep form stable.`,
+          tip: 'Maintain control and focus on the target muscles.'
+        }))
+        return { label: day.label, exercises }
+      })
+
+      const allExercises = daysData.flatMap((d, di) => 
+        d.exercises.map(ex => ({ ...ex, day: di + 1 }))
+      )
+
+      const workoutText = daysData.map(d => `# ${d.label}:\n${d.exercises.map(ex => `${ex.name} ${ex.sets} ${ex.reps}`).join('\n')}`).join('\n\n')
+
+      const workoutPlanPayload = {
+        title: editWorkoutTitle || 'Custom Workout Plan',
+        days: daysData,
+        exercises: allExercises,
+        level: selectedClient.workout_plan?.level || 'intermediate',
+        duration: selectedClient.workout_plan?.duration || 'Ongoing',
+        daysPerWeek: editDays.length,
+        text: workoutText
+      }
+
+      // 2. Build structured nutrition plan
+      const mealsData = editMeals.filter(m => m.name.trim()).map((m, i) => ({
+        id: 'meal-' + (i + 1),
+        name: m.name.trim(),
+        time: m.time || 'Anytime',
+        foods: m.foods.filter(f => f.name.trim()).map(f => ({ name: f.name.trim(), qty: f.qty || '1 portion' }))
+      }))
+
+      const nutritionText = `Calories: ${editCalories} kcal | Protein: ${editProtein}g | Carbs: ${editCarbs}g | Fat: ${editFat}g\n\n` +
+        mealsData.map((m, i) => `MEAL ${i+1}: ${m.name} (${m.time})\n${m.foods.map(f => `• ${f.name} — ${f.qty}`).join('\n')}`).join('\n\n')
+
+      const nutritionPlanPayload = {
+        calories: editCalories,
+        macros: { protein: editProtein, carbs: editCarbs, fat: editFat },
+        meals: mealsData,
+        text: nutritionText
+      }
+
+      // Update in Supabase
       const { error } = await supabase
         .from('profiles')
         .update({
-          workout_plan: { text: workoutPlanText },
-          nutrition_plan: { text: nutritionPlanText }
+          workout_plan: workoutPlanPayload,
+          nutrition_plan: nutritionPlanPayload
         })
         .eq('id', selectedClient.id)
 
       if (error) throw error
 
       toast.success(`Successfully saved customized plans for ${selectedClient.full_name}!`)
-      
+
       // Update local state
       setClients(prev => prev.map(c => 
         c.id === selectedClient.id 
-          ? { ...c, workout_plan: { text: workoutPlanText }, nutrition_plan: { text: nutritionPlanText } }
+          ? { ...c, workout_plan: workoutPlanPayload, nutrition_plan: nutritionPlanPayload }
           : c
       ))
-      
+
       setSelectedClient(prev => ({
         ...prev,
-        workout_plan: { text: workoutPlanText },
-        nutrition_plan: { text: nutritionPlanText }
+        workout_plan: workoutPlanPayload,
+        nutrition_plan: nutritionPlanPayload
       }))
+
+      setWorkoutPlanText(workoutText)
+      setNutritionPlanText(nutritionText)
+      setShowEditPlanModal(false)
     } catch (err) {
-      console.error('Error saving plans:', err)
+      console.error('Error saving edited plans:', err)
       toast.error('Failed to save workout/diet plans.')
     } finally {
       setSavingPlans(false)
     }
   }
+
 
   const handleSaveProfile = async () => {
     if (!selectedClient) return
@@ -280,18 +658,36 @@ export function ManageClients() {
     }
   }
 
-  const handleDeleteClient = async (id, name) => {
-    if (!window.confirm(`Are you absolutely sure you want to completely remove client ${name}?`)) {
-      return
-    }
+  const handleDeleteClient = (id, name) => {
+    // Show custom confirmation modal instead of window.confirm
+    setDeleteConfirm({ id, name })
+  }
+
+  const confirmDeleteClient = async () => {
+    if (!deleteConfirm) return
+    const { id, name } = deleteConfirm
+    setDeleteConfirm(null)
 
     try {
-      const { error } = await supabase
-        .from('profiles')
-        .delete()
-        .eq('id', id)
+      // Get the current session token to authenticate the edge function call
+      const { data: { session } } = await supabase.auth.getSession()
+      if (!session) throw new Error('Not authenticated')
 
-      if (error) throw error
+      // Call the edge function which uses the service role key to fully delete the auth user
+      const res = await fetch(
+        'https://aykiykjhuamibjyfypeo.supabase.co/functions/v1/delete-user',
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${session.access_token}`,
+          },
+          body: JSON.stringify({ userId: id }),
+        }
+      )
+
+      const result = await res.json()
+      if (!res.ok) throw new Error(result.error || 'Failed to delete user')
 
       toast.success(`Client ${name} has been removed.`)
       setClients(prev => prev.filter(c => c.id !== id))
@@ -300,7 +696,7 @@ export function ManageClients() {
       }
     } catch (err) {
       console.error('Error deleting client:', err)
-      toast.error('Failed to remove client.')
+      toast.error(err.message || 'Failed to remove client.')
     }
   }
 
@@ -874,100 +1270,506 @@ export function ManageClients() {
             )}
 
             {/* 2. Custom Workout & Diet Plans Injector */}
-            <Card className="space-y-4">
+            <Card className="space-y-4 bg-[#111] border border-[#1F1F1F] relative overflow-hidden">
+              <div className="absolute top-0 right-0 w-32 h-32 bg-[#E8FF00]/1 rounded-full blur-3xl pointer-events-none" />
               <div className="flex justify-between items-center border-b border-[#1F1F1F] pb-2">
                 <div>
                   <h3 className="font-bebas text-xl text-[#F5F5F5] tracking-wide uppercase">Customized Plans</h3>
-                  <span className="text-[9px] text-[#666666] font-semibold uppercase tracking-wider block">These plans will override standard plans in their client portal</span>
+                  <span className="text-[9px] text-[#666666] font-semibold uppercase tracking-wider block">
+                    These plans override standard templates in their client portal
+                  </span>
                 </div>
                 <Button 
-                  onClick={handleSavePlans} 
-                  disabled={savingPlans}
-                  className="font-bebas uppercase tracking-wider text-xs py-1.5 px-4"
+                  onClick={handleOpenEditPlanModal} 
+                  className="font-bebas uppercase tracking-wider text-xs py-1.5 px-4 bg-[#E8FF00] hover:bg-[#E8FF00]/90 text-black flex items-center gap-1"
                 >
-                  <Save size={14} className="mr-1" /> {savingPlans ? 'Saving...' : 'Save Plans'}
+                  <Edit3 size={14} /> Edit Plans
                 </Button>
               </div>
 
-              {/* Workout Plan Field */}
-              <div className="space-y-2">
-                <div className="flex items-center gap-1.5 text-xs font-bold text-[#E8FF00] uppercase tracking-wider">
-                  <Dumbbell size={14} />
-                  <span>Custom Workout Plan</span>
-                </div>
-                <textarea
-                  value={workoutPlanText}
-                  onChange={(e) => setWorkoutPlanText(e.target.value)}
-                  placeholder={"Flat dumbbell press 3 6:8 1\nLat pull down 3 8:10 1\nShoulder press 2 8:10 1"}
-                  className="w-full h-32 bg-[#161616] border border-[#1F1F1F] rounded-lg p-3 text-xs text-[#F5F5F5] placeholder-[#444444] outline-none focus:border-[#E8FF00]/40 transition-colors"
-                />
-                {/* Live workout preview */}
-                {workoutPlanText.trim() && (() => {
-                  const wp = parseWorkoutPlan({ text: workoutPlanText })
-                  if (!wp || !wp.exercises?.length) return null
-                  return (
-                    <div className="rounded-lg border border-[#E8FF00]/10 bg-[#0A0A0A] p-2.5 space-y-1.5 max-h-36 overflow-y-auto">
-                      <span className="text-[8px] font-bold text-[#E8FF00] uppercase tracking-widest block">LIVE PREVIEW — {wp.exercises.length} EXERCISES</span>
-                      {wp.exercises.slice(0, 6).map((ex, i) => (
-                        <div key={i} className="flex items-center justify-between px-2 py-1 rounded bg-[#111111] border border-[#1A1A1A]">
-                          <div className="flex items-center gap-1.5">
-                            <div className={`w-1.5 h-1.5 rounded-full ${ex.dotColor || 'bg-[#E8FF00]'}`} />
-                            <span className="text-[10px] text-[#EAEAEA] font-semibold truncate max-w-[140px]">{ex.name}</span>
-                          </div>
-                          <span className="text-[8px] font-bold text-[#555] uppercase">{ex.sets}×{ex.reps}</span>
-                        </div>
-                      ))}
-                      {wp.exercises.length > 6 && <span className="text-[8px] text-[#555] font-bold">+{wp.exercises.length - 6} more...</span>}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {/* Workout Plan Summary */}
+                <div className="bg-[#0A0A0A] border border-[#1F1F1F] rounded-xl p-3.5 space-y-3 relative group">
+                  <div className="flex items-center gap-2 border-b border-[#1F1F1F] pb-2">
+                    <div className="w-7 h-7 rounded-lg bg-[#E8FF00]/10 flex items-center justify-center text-[#E8FF00]">
+                      <Dumbbell size={14} />
                     </div>
-                  )
-                })()}
-              </div>
-
-              {/* Diet Plan Field */}
-              <div className="space-y-2">
-                <div className="flex items-center gap-1.5 text-xs font-bold text-[#4DA6FF] uppercase tracking-wider">
-                  <Apple size={14} />
-                  <span>Custom Diet & Nutrition Plan</span>
-                </div>
-                <textarea
-                  value={nutritionPlanText}
-                  onChange={(e) => setNutritionPlanText(e.target.value)}
-                  placeholder={"Daily Targets:\nCalories: 2500 kcal | Protein: 180g | Carbs: 250g | Fat: 70g\n\nMEAL 1: Breakfast (7:00 AM)\n• Oats — 70g\n• Whey Protein — 1 Scoop"}
-                  className="w-full h-32 bg-[#161616] border border-[#1F1F1F] rounded-lg p-3 text-xs text-[#F5F5F5] placeholder-[#444444] outline-none focus:border-[#4DA6FF]/40 transition-colors"
-                />
-                {/* Live nutrition preview */}
-                {nutritionPlanText.trim() && (() => {
-                  const np = parseNutritionPlan({ text: nutritionPlanText })
-                  if (!np) return null
-                  return (
-                    <div className="rounded-lg border border-[#4DA6FF]/10 bg-[#0A0A0A] p-2.5 space-y-1.5 max-h-36 overflow-y-auto">
-                      <span className="text-[8px] font-bold text-[#4DA6FF] uppercase tracking-widest block">LIVE PREVIEW</span>
-                      <div className="flex gap-2 text-[9px] font-bold">
-                        <span className="text-[#F5F5F5]">{np.calories} kcal</span>
-                        <span className="text-[#FF3A2D]">P:{np.macros?.protein || 0}g</span>
-                        <span className="text-[#4DA6FF]">C:{np.macros?.carbs || 0}g</span>
-                        <span className="text-[#34D399]">F:{np.macros?.fat || 0}g</span>
-                      </div>
-                      {np.meals?.slice(0, 3).map((meal, i) => (
-                        <div key={i} className="px-2 py-1 rounded bg-[#111111] border border-[#1A1A1A]">
-                          <span className="text-[10px] text-[#4DA6FF] font-bold uppercase">{meal.name}</span>
-                          {meal.foods?.length > 0 && (
-                            <div className="pl-2 mt-0.5 space-y-0.5 border-l border-[#1F1F1F]">
-                              {meal.foods.map((f, fi) => (
-                                <div key={fi} className="flex justify-between text-[9px] text-[#AAA]">
-                                  <span>• {f.name}</span>
-                                  <span className="text-[#666]">{f.qty}</span>
-                                </div>
-                              ))}
+                    <div>
+                      <h4 className="font-bebas text-sm text-[#F5F5F5] tracking-wide uppercase">
+                        {selectedClient.workout_plan?.title || 'Workout Plan'}
+                      </h4>
+                      <span className="text-[8px] text-[#666] font-bold uppercase tracking-wider block">
+                        {selectedClient.workout_plan?.daysPerWeek || selectedClient.workout_plan?.days?.length || 0} training days
+                      </span>
+                    </div>
+                  </div>
+                  {/* Workout preview list */}
+                  {selectedClient.workout_plan ? (() => {
+                    const wp = parseWorkoutPlan(selectedClient.workout_plan)
+                    if (!wp || !wp.exercises?.length) return (
+                      <span className="text-[10px] text-[#444] font-medium block py-4 text-center">No active workout plan assigned.</span>
+                    )
+                    return (
+                      <div className="space-y-1.5 max-h-36 overflow-y-auto pr-1">
+                        {wp.exercises.slice(0, 4).map((ex, i) => (
+                          <div key={i} className="flex items-center justify-between px-2.5 py-1.5 rounded bg-[#111] border border-[#1C1C1C]">
+                            <div className="flex items-center gap-1.5 min-w-0">
+                              <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${ex.dotColor || 'bg-[#E8FF00]'}`} />
+                              <span className="text-[10px] text-[#EAEAEA] font-semibold truncate max-w-[130px]">{ex.name}</span>
                             </div>
+                            <span className="text-[8px] font-bold text-[#555] uppercase shrink-0">D{ex.day || 1} • {ex.sets}×{ex.reps}</span>
+                          </div>
+                        ))}
+                        {wp.exercises.length > 4 && (
+                          <span className="text-[8px] text-[#666] font-bold block pt-1">+{wp.exercises.length - 4} more exercises...</span>
+                        )}
+                      </div>
+                    )
+                  })() : (
+                    <span className="text-[10px] text-[#444] font-medium block py-4 text-center">No active workout plan assigned.</span>
+                  )}
+                </div>
+
+                {/* Nutrition Plan Summary */}
+                <div className="bg-[#0A0A0A] border border-[#1F1F1F] rounded-xl p-3.5 space-y-3 relative group">
+                  <div className="flex items-center gap-2 border-b border-[#1F1F1F] pb-2">
+                    <div className="w-7 h-7 rounded-lg bg-[#4DA6FF]/10 flex items-center justify-center text-[#4DA6FF]">
+                      <Apple size={14} />
+                    </div>
+                    <div>
+                      <h4 className="font-bebas text-sm text-[#F5F5F5] tracking-wide uppercase">Daily Nutrition</h4>
+                      <span className="text-[8px] text-[#666] font-bold uppercase tracking-wider block">
+                        {selectedClient.nutrition_plan?.meals?.length || 0} scheduled meals
+                      </span>
+                    </div>
+                  </div>
+                  {/* Nutrition details */}
+                  {selectedClient.nutrition_plan ? (() => {
+                    const np = parseNutritionPlan(selectedClient.nutrition_plan)
+                    if (!np) return (
+                      <span className="text-[10px] text-[#444] font-medium block py-4 text-center">No active nutrition plan assigned.</span>
+                    )
+                    return (
+                      <div className="space-y-2.5">
+                        <div className="grid grid-cols-4 gap-1 text-center font-bold text-[8px] uppercase">
+                          <div className="bg-[#1C1C1C]/40 py-1.5 rounded border border-[#1F1F1F] text-[#F5F5F5]">
+                            <span className="block text-[7px] text-[#555]">KCAL</span>
+                            {np.calories || 2200}
+                          </div>
+                          <div className="bg-[#FF3A2D]/10 py-1.5 rounded border border-[#FF3A2D]/10 text-[#FF3A2D]">
+                            <span className="block text-[7px] text-[#555]">PRO</span>
+                            {np.macros?.protein || 0}g
+                          </div>
+                          <div className="bg-[#4DA6FF]/10 py-1.5 rounded border border-[#4DA6FF]/10 text-[#4DA6FF]">
+                            <span className="block text-[7px] text-[#555]">CARB</span>
+                            {np.macros?.carbs || 0}g
+                          </div>
+                          <div className="bg-[#34D399]/10 py-1.5 rounded border border-[#34D399]/10 text-[#34D399]">
+                            <span className="block text-[7px] text-[#555]">FAT</span>
+                            {np.macros?.fat || 0}g
+                          </div>
+                        </div>
+                        <div className="space-y-1 max-h-20 overflow-y-auto pr-1">
+                          {np.meals?.slice(0, 2).map((meal, i) => (
+                            <div key={i} className="px-2 py-1 rounded bg-[#111] border border-[#1C1C1C] flex justify-between items-center">
+                              <span className="text-[9px] text-[#4DA6FF] font-bold uppercase truncate max-w-[120px]">{meal.name}</span>
+                              <span className="text-[8px] text-[#666] font-semibold">{meal.time}</span>
+                            </div>
+                          ))}
+                          {np.meals?.length > 2 && (
+                            <span className="text-[8px] text-[#666] font-bold block pt-0.5">+{np.meals.length - 2} more meals...</span>
                           )}
                         </div>
-                      ))}
-                    </div>
-                  )
-                })()}
+                      </div>
+                    )
+                  })() : (
+                    <span className="text-[10px] text-[#444] font-medium block py-4 text-center">No active nutrition plan assigned.</span>
+                  )}
+                </div>
               </div>
             </Card>
+
+            {/* Visual Plan Editor Modal */}
+            <Modal
+              isOpen={showEditPlanModal}
+              onClose={() => setShowEditPlanModal(false)}
+              title={`Customize Plans for ${selectedClient?.full_name || 'Client'}`}
+              size="xl"
+            >
+              <div className="flex flex-col h-[75vh]">
+                {/* Modal Tab Switchers */}
+                <div className="flex border-b border-[#1F1F1F] mb-4 shrink-0">
+                  <button
+                    onClick={() => setEditPlanTab('workout')}
+                    className={`flex-1 py-3 text-center font-bebas text-lg tracking-wider transition-all border-b-2 uppercase ${
+                      editPlanTab === 'workout'
+                        ? 'border-[#E8FF00] text-[#E8FF00] bg-[#E8FF00]/5'
+                        : 'border-transparent text-[#666] hover:text-[#F5F5F5]'
+                    }`}
+                  >
+                    Workout Plan Builder
+                  </button>
+                  <button
+                    onClick={() => setEditPlanTab('nutrition')}
+                    className={`flex-1 py-3 text-center font-bebas text-lg tracking-wider transition-all border-b-2 uppercase ${
+                      editPlanTab === 'nutrition'
+                        ? 'border-[#4DA6FF] text-[#4DA6FF] bg-[#4DA6FF]/5'
+                        : 'border-transparent text-[#666] hover:text-[#F5F5F5]'
+                    }`}
+                  >
+                    Diet & Nutrition Builder
+                  </button>
+                </div>
+
+                {/* Modal Editor Body */}
+                <div className="flex-1 overflow-y-auto min-h-0 space-y-4 pr-1">
+                  {editPlanTab === 'workout' ? (
+                    <div className="space-y-4">
+                      {/* Plan Title & Frequency */}
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 bg-[#0A0A0A] p-4 border border-[#1F1F1F] rounded-xl">
+                        <div className="space-y-1.5">
+                          <label className="text-[10px] text-[#555] uppercase font-bold tracking-wider">Plan Title</label>
+                          <input
+                            type="text"
+                            value={editWorkoutTitle}
+                            onChange={(e) => setEditWorkoutTitle(e.target.value)}
+                            placeholder="Custom Workout Plan"
+                            className="w-full bg-[#161616] border border-[#1F1F1F] rounded-lg px-3 py-2 text-xs text-[#F5F5F5] outline-none focus:border-[#E8FF00]/40"
+                          />
+                        </div>
+                        <div className="space-y-1.5">
+                          <label className="text-[10px] text-[#555] uppercase font-bold tracking-wider">Training Frequency</label>
+                          <select
+                            value={editTrainingDays}
+                            onChange={(e) => handleEditTrainingDaysChange(e.target.value)}
+                            className="w-full bg-[#161616] border border-[#1F1F1F] rounded-lg px-3 py-2 text-xs text-[#F5F5F5] outline-none focus:border-[#E8FF00]/40"
+                          >
+                            {[1, 2, 3, 4, 5, 6, 7].map(n => (
+                              <option key={n} value={n}>{n} {n === 1 ? 'Day' : 'Days'} per Week</option>
+                            ))}
+                          </select>
+                        </div>
+                      </div>
+
+                      {/* Day Tab Selectors with Day Swapping Option */}
+                      <div className="space-y-2">
+                        <div className="flex items-center justify-between">
+                          <span className="text-[10px] text-[#555] uppercase font-bold tracking-wider">Workout Days</span>
+                          {swapSourceDayIdx !== null && (
+                            <span className="text-[10px] text-[#FF8C00] font-bold uppercase animate-pulse">
+                              Click another day to swap with {editDays[swapSourceDayIdx]?.label || `Day ${swapSourceDayIdx + 1}`}
+                            </span>
+                          )}
+                        </div>
+                        
+                        <div className="flex flex-wrap gap-1.5 items-center bg-[#0A0A0A] p-1.5 border border-[#1F1F1F] rounded-xl">
+                          {editDays.map((day, di) => {
+                            const isSource = swapSourceDayIdx === di;
+                            const isActive = editActiveDay === di;
+                            return (
+                              <button
+                                key={di}
+                                type="button"
+                                onClick={() => handleDayTabClick(di)}
+                                className={`px-3 py-1.5 rounded-lg font-bebas text-xs tracking-wide uppercase transition-all shrink-0 relative ${
+                                  isSource
+                                    ? 'bg-[#FF8C00] text-black border border-transparent shadow-[0_0_12px_rgba(255,140,0,0.3)] animate-pulse'
+                                    : swapSourceDayIdx !== null
+                                    ? 'bg-[#161616] border border-[#FF8C00]/30 text-[#FF8C00] hover:bg-[#FF8C00]/10'
+                                    : isActive
+                                    ? 'bg-[#E8FF00] text-black border border-transparent'
+                                    : 'bg-[#111] border border-[#1F1F1F] text-[#666] hover:text-[#E8FF00] hover:border-[#E8FF00]/40'
+                                }`}
+                              >
+                                {day.label || `Day ${di + 1}`}
+                                {swapSourceDayIdx !== null && !isSource && (
+                                  <span className="absolute -top-1 -right-1 flex h-2 w-2">
+                                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#FF8C00] opacity-75"></span>
+                                    <span className="relative inline-flex rounded-full h-2 w-2 bg-[#FF8C00]"></span>
+                                  </span>
+                                )}
+                              </button>
+                            )
+                          })}
+                          
+                          <button
+                            type="button"
+                            onClick={() => {
+                              if (swapSourceDayIdx !== null) {
+                                setSwapSourceDayIdx(null)
+                              } else {
+                                setSwapSourceDayIdx(editActiveDay)
+                              }
+                            }}
+                            className={`ml-auto flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider px-2.5 py-1.5 rounded-lg border transition-all cursor-pointer ${
+                              swapSourceDayIdx !== null
+                                ? 'bg-red-500/10 border-red-500/20 text-red-500 hover:bg-red-500/20'
+                                : 'bg-[#E8FF00]/10 border-[#E8FF00]/20 text-[#E8FF00] hover:bg-[#E8FF00]/20'
+                            }`}
+                          >
+                            <ArrowLeftRight size={12} />
+                            {swapSourceDayIdx !== null ? 'Cancel Swap' : 'Swap Days'}
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* Day Editor Block */}
+                      {editDays[editActiveDay] && (
+                        <div className="space-y-4">
+                          {/* Day label input */}
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs text-[#555] uppercase font-bold">Label:</span>
+                            <input
+                              type="text"
+                              value={editDays[editActiveDay].label}
+                              onChange={(e) => updateEditDayLabel(editActiveDay, e.target.value)}
+                              placeholder="Day 1 (e.g. Upper Body)"
+                              className="bg-transparent border-b border-[#1F1F1F] focus:border-[#E8FF00]/40 text-xs font-bold text-[#E8FF00] uppercase outline-none py-0.5 px-1 max-w-[200px]"
+                            />
+                          </div>
+
+                          {/* Exercises list */}
+                          <div className="space-y-2.5 max-h-[36vh] overflow-y-auto pr-1">
+                            {editDays[editActiveDay].exercises.length === 0 ? (
+                              <div className="text-center py-6 text-xs text-[#555] uppercase font-bold">No exercises added yet.</div>
+                            ) : (
+                              <DndContext
+                                sensors={sensors}
+                                collisionDetection={closestCenter}
+                                onDragEnd={handleDragEnd}
+                              >
+                                <SortableContext
+                                  items={editDays[editActiveDay].exercises.map(ex => ex.id)}
+                                  strategy={verticalListSortingStrategy}
+                                >
+                                  {editDays[editActiveDay].exercises.map((ex, ei) => (
+                                    <SortableExerciseRow
+                                      key={ex.id}
+                                      ex={ex}
+                                      index={ei}
+                                      onUpdate={updateEditExercise}
+                                      onRemove={removeEditExercise}
+                                    />
+                                  ))}
+                                </SortableContext>
+                              </DndContext>
+                            )}
+                          </div>
+
+                          <button
+                            type="button"
+                            onClick={addEditExercise}
+                            className="w-full py-2 bg-[#161616] hover:bg-[#1A1A1A] text-xs text-[#E8FF00] font-bold uppercase tracking-wider rounded-xl border border-dashed border-[#1F1F1F] hover:border-[#E8FF00]/30 transition-all flex items-center justify-center gap-1 cursor-pointer"
+                          >
+                            <Plus size={12} /> Add Exercise
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    <div className="space-y-4">
+                      {/* Calories & Macros Header */}
+                      <div className="grid grid-cols-4 gap-2 bg-[#0A0A0A] p-4 border border-[#1F1F1F] rounded-xl text-center">
+                        <div className="space-y-1">
+                          <span className="block text-[8px] text-[#555] uppercase font-bold">CALORIES</span>
+                          <input
+                            type="number"
+                            value={editCalories}
+                            onChange={(e) => setEditCalories(Number(e.target.value))}
+                            className="w-full text-center bg-[#161616] border border-[#1F1F1F] focus:border-[#4DA6FF]/40 rounded-lg px-2 py-1.5 text-xs text-[#F5F5F5] outline-none"
+                          />
+                        </div>
+                        <div className="space-y-1">
+                          <span className="block text-[8px] text-[#FF3A2D] uppercase font-bold">PROTEIN (G)</span>
+                          <input
+                            type="number"
+                            value={editProtein}
+                            onChange={(e) => setEditProtein(Number(e.target.value))}
+                            className="w-full text-center bg-[#161616] border border-[#1F1F1F] focus:border-red-500/40 rounded-lg px-2 py-1.5 text-xs text-[#FF3A2D] outline-none"
+                          />
+                        </div>
+                        <div className="space-y-1">
+                          <span className="block text-[8px] text-[#4DA6FF] uppercase font-bold">CARBS (G)</span>
+                          <input
+                            type="number"
+                            value={editCarbs}
+                            onChange={(e) => setEditCarbs(Number(e.target.value))}
+                            className="w-full text-center bg-[#161616] border border-[#1F1F1F] focus:border-[#4DA6FF]/40 rounded-lg px-2 py-1.5 text-xs text-[#4DA6FF] outline-none"
+                          />
+                        </div>
+                        <div className="space-y-1">
+                          <span className="block text-[8px] text-[#34D399] uppercase font-bold">FAT (G)</span>
+                          <input
+                            type="number"
+                            value={editFat}
+                            onChange={(e) => setEditFat(Number(e.target.value))}
+                            className="w-full text-center bg-[#161616] border border-[#1F1F1F] focus:border-emerald-500/40 rounded-lg px-2 py-1.5 text-xs text-[#34D399] outline-none"
+                          />
+                        </div>
+                      </div>
+
+                      {/* Meals List */}
+                      <div className="space-y-3.5 max-h-[46vh] overflow-y-auto pr-1">
+                        {editMeals.map((meal, mi) => (
+                          <div key={mi} className="bg-[#0A0A0A] border border-[#1F1F1F] rounded-xl p-3.5 space-y-2.5 relative group">
+                            {/* Delete Meal */}
+                            <button
+                              type="button"
+                              onClick={() => removeEditMeal(mi)}
+                              className="absolute top-3 right-3 text-[#444] hover:text-red-500 transition-colors opacity-0 group-hover:opacity-100 cursor-pointer"
+                            >
+                              <Trash2 size={14} />
+                            </button>
+
+                            {/* Meal Header (Name & Time) */}
+                            <div className="grid grid-cols-2 gap-2">
+                              <div className="space-y-1">
+                                <span className="block text-[8px] text-[#555] uppercase font-bold">Meal Name</span>
+                                <input
+                                  type="text"
+                                  value={meal.name}
+                                  onChange={(e) => updateEditMeal(mi, 'name', e.target.value)}
+                                  placeholder="Meal 1: Breakfast"
+                                  className="w-full bg-[#161616] border border-[#1F1F1F] rounded-lg px-2 py-1 text-xs text-[#F5F5F5] outline-none focus:border-[#4DA6FF]/40"
+                                />
+                              </div>
+                              <div className="space-y-1">
+                                <span className="block text-[8px] text-[#555] uppercase font-bold">Time</span>
+                                <input
+                                  type="text"
+                                  value={meal.time}
+                                  onChange={(e) => updateEditMeal(mi, 'time', e.target.value)}
+                                  placeholder="7:00 AM"
+                                  className="w-full bg-[#161616] border border-[#1F1F1F] rounded-lg px-2 py-1 text-xs text-[#F5F5F5] outline-none focus:border-[#4DA6FF]/40"
+                                />
+                              </div>
+                            </div>
+
+                            {/* Foods Sublist */}
+                            <div className="space-y-2">
+                              <span className="block text-[8px] text-[#555] uppercase font-bold">Foods & Quantities</span>
+                              <div className="space-y-1.5 pl-2 border-l border-[#1F1F1F]">
+                                {meal.foods.map((food, fi) => (
+                                  <div key={fi} className="flex gap-2 items-center">
+                                    <input
+                                      type="text"
+                                      value={food.name}
+                                      onChange={(e) => updateEditFood(mi, fi, 'name', e.target.value)}
+                                      placeholder="Food Item (e.g. Oatmeal)"
+                                      className="flex-1 bg-transparent border-b border-[#1F1F1F] focus:border-[#4DA6FF]/40 text-xs text-[#F5F5F5] outline-none py-0.5"
+                                    />
+                                    <input
+                                      type="text"
+                                      value={food.qty}
+                                      onChange={(e) => updateEditFood(mi, fi, 'qty', e.target.value)}
+                                      placeholder="Quantity (e.g. 70g)"
+                                      className="w-24 bg-transparent border-b border-[#1F1F1F] focus:border-[#4DA6FF]/40 text-xs text-[#888] outline-none py-0.5"
+                                    />
+                                    <button
+                                      type="button"
+                                      onClick={() => removeEditFood(mi, fi)}
+                                      className="text-[#444] hover:text-red-500 transition-colors"
+                                    >
+                                      <X size={12} />
+                                    </button>
+                                  </div>
+                                ))}
+                                <button
+                                  type="button"
+                                  onClick={() => addEditFood(mi)}
+                                  className="text-[9px] text-[#4DA6FF] hover:underline font-semibold flex items-center gap-0.5 pt-1 bg-transparent border-none cursor-pointer outline-none"
+                                >
+                                  <Plus size={10} /> Add food item
+                                </button>
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+
+                        <button
+                          type="button"
+                          onClick={addEditMeal}
+                          className="w-full py-2 bg-[#161616] hover:bg-[#1A1A1A] text-xs text-[#4DA6FF] font-bold uppercase tracking-wider rounded-xl border border-dashed border-[#1F1F1F] hover:border-[#4DA6FF]/30 transition-all flex items-center justify-center gap-1 cursor-pointer"
+                        >
+                          <Plus size={12} /> Add Meal
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* Modal Footer Controls */}
+                <div className="flex gap-3 border-t border-[#1F1F1F] pt-4 mt-auto shrink-0">
+                  <Button
+                    type="button"
+                    onClick={() => setShowEditPlanModal(false)}
+                    className="flex-1 font-bebas uppercase tracking-wider text-xs py-2 bg-transparent hover:bg-[#161616] text-[#666] hover:text-[#F5F5F5] border border-[#1F1F1F]"
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    type="button"
+                    onClick={handleSaveEditPlans}
+                    disabled={savingPlans}
+                    className={`flex-1 font-bebas uppercase tracking-wider text-xs py-2 ${
+                      editPlanTab === 'workout'
+                        ? 'bg-[#E8FF00] hover:bg-[#E8FF00]/90 text-black shadow-[0_0_12px_rgba(232,255,0,0.15)]'
+                        : 'bg-[#4DA6FF] hover:bg-[#4DA6FF]/90 text-black shadow-[0_0_12px_rgba(77,166,255,0.15)]'
+                    }`}
+                  >
+                    {savingPlans ? 'Saving...' : 'Save Customized Plans'}
+                  </Button>
+                </div>
+              </div>
+            </Modal>
+          </div>
+        )}
+
+        {/* ── Delete Confirmation Modal ─────────────────────────────── */}
+        {deleteConfirm && (
+          <div className="fixed inset-0 z-[200] flex items-center justify-center p-4">
+            {/* Backdrop */}
+            <div
+              className="absolute inset-0 bg-black/70 backdrop-blur-sm"
+              onClick={() => setDeleteConfirm(null)}
+            />
+
+            {/* Dialog */}
+            <div className="relative z-10 w-full max-w-sm bg-[#111111] border border-[#2a2a2a] rounded-2xl p-6 shadow-2xl space-y-5">
+              {/* Icon */}
+              <div className="flex items-center justify-center w-14 h-14 rounded-full bg-[#FF3A2D]/10 border border-[#FF3A2D]/25 mx-auto">
+                <AlertTriangle size={26} className="text-[#FF3A2D]" />
+              </div>
+
+              {/* Text */}
+              <div className="text-center space-y-1.5">
+                <h3 className="font-bebas text-2xl tracking-wide text-[#F5F5F5] uppercase">
+                  Remove Client
+                </h3>
+                <p className="text-sm text-[#888] leading-relaxed">
+                  Are you sure you want to permanently remove{' '}
+                  <span className="text-[#F5F5F5] font-semibold">{deleteConfirm.name}</span>?
+                  <br />
+                  <span className="text-xs text-[#FF3A2D]/80">This action cannot be undone.</span>
+                </p>
+              </div>
+
+              {/* Actions */}
+              <div className="flex gap-3 pt-1">
+                <button
+                  onClick={() => setDeleteConfirm(null)}
+                  className="flex-1 py-2.5 rounded-xl border border-[#2a2a2a] text-sm font-bold text-[#888] hover:text-[#F5F5F5] hover:border-[#444] transition-all cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={confirmDeleteClient}
+                  className="flex-1 py-2.5 rounded-xl bg-[#FF3A2D] hover:bg-[#e02d21] text-white text-sm font-bold transition-all cursor-pointer shadow-[0_0_16px_rgba(255,58,45,0.25)]"
+                >
+                  Yes, Remove
+                </button>
+              </div>
+            </div>
           </div>
         )}
       </div>

@@ -62,6 +62,39 @@ export default function TestimonialsManager() {
 
     setSaving(true)
     try {
+      // Dynamic Reordering: Shift existing testimonials with sort_order >= targetOrder
+      const targetOrder = parseInt(sortOrder, 10) || 0
+      let needsShift = false
+      if (!editingTestimonial) {
+        needsShift = true
+      } else if (targetOrder !== editingTestimonial.sort_order) {
+        needsShift = true
+      }
+
+      if (needsShift) {
+        let query = supabase
+          .from('testimonials')
+          .select('id, sort_order')
+          .gte('sort_order', targetOrder)
+
+        if (editingTestimonial) {
+          query = query.neq('id', editingTestimonial.id)
+        }
+
+        const { data: toShift, error: fetchErr } = await query
+        if (fetchErr) throw fetchErr
+
+        if (toShift && toShift.length > 0) {
+          const updatePromises = toShift.map(item =>
+            supabase
+              .from('testimonials')
+              .update({ sort_order: item.sort_order + 1 })
+              .eq('id', item.id)
+          )
+          await Promise.all(updatePromises)
+        }
+      }
+
       const payload = {
         name_en: nameEn,
         name_ar: nameAr,
@@ -70,7 +103,7 @@ export default function TestimonialsManager() {
         rating: parseInt(rating, 10) || 5,
         quote_en: quoteEn,
         quote_ar: quoteAr,
-        sort_order: parseInt(sortOrder, 10) || 0
+        sort_order: targetOrder
       }
 
       if (editingTestimonial) {

@@ -345,7 +345,40 @@ export function TransformationsManager() {
         afterBackUrl = await uploadImage(afterBackFile, 'after_back')
       }
 
-      // 3. Save / Update record
+      // 3. Dynamic Reordering: Shift existing transformations with sort_order >= targetOrder
+      const targetOrder = parseInt(sortOrder, 10) || 0
+      let needsShift = false
+      if (!editingTransformation) {
+        needsShift = true
+      } else if (targetOrder !== editingTransformation.sort_order) {
+        needsShift = true
+      }
+
+      if (needsShift) {
+        let query = supabase
+          .from('transformations')
+          .select('id, sort_order')
+          .gte('sort_order', targetOrder)
+
+        if (editingTransformation) {
+          query = query.neq('id', editingTransformation.id)
+        }
+
+        const { data: toShift, error: fetchErr } = await query
+        if (fetchErr) throw fetchErr
+
+        if (toShift && toShift.length > 0) {
+          const updatePromises = toShift.map(item =>
+            supabase
+              .from('transformations')
+              .update({ sort_order: item.sort_order + 1 })
+              .eq('id', item.id)
+          )
+          await Promise.all(updatePromises)
+        }
+      }
+
+      // 4. Save / Update record
       const payload = {
         before_image_url: beforeUrl,
         after_image_url: afterUrl,
@@ -359,7 +392,7 @@ export function TransformationsManager() {
         duration_ar: durationAr,
         description_en: descriptionEn || null,
         description_ar: descriptionAr || null,
-        sort_order: parseInt(sortOrder, 10) || 0
+        sort_order: targetOrder
       }
 
       if (editingTransformation) {

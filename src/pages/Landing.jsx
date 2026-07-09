@@ -71,6 +71,12 @@ function ClientTransformationCard({ trans, language }) {
   const [activeAngle, setActiveAngle] = useState('front')
   const [isHovered, setIsHovered] = useState(false)
 
+  // Touch Swipe Refs
+  const touchStartX = useRef(0)
+  const touchStartY = useRef(0)
+  const touchEndX = useRef(0)
+  const touchEndY = useRef(0)
+
   const availableViews = useMemo(() => {
     const views = ['front']
     if (trans.before_side_url || trans.after_side_url) {
@@ -97,6 +103,44 @@ function ClientTransformationCard({ trans, language }) {
     return () => clearInterval(interval)
   }, [isHovered, availableViews])
 
+  // Swipe handlers
+  const handleTouchStart = (e) => {
+    touchStartX.current = e.targetTouches[0].clientX
+    touchStartY.current = e.targetTouches[0].clientY
+    touchEndX.current = e.targetTouches[0].clientX
+    touchEndY.current = e.targetTouches[0].clientY
+  }
+
+  const handleTouchMove = (e) => {
+    touchEndX.current = e.targetTouches[0].clientX
+    touchEndY.current = e.targetTouches[0].clientY
+  }
+
+  const handleTouchEnd = () => {
+    const deltaX = touchStartX.current - touchEndX.current
+    const deltaY = touchStartY.current - touchEndY.current
+    const minSwipeDistance = 40
+
+    // Detect prominent horizontal swipe
+    if (Math.abs(deltaX) > Math.abs(deltaY) && Math.abs(deltaX) > minSwipeDistance) {
+      if (deltaX > 0) {
+        // Swipe Left -> Next angle
+        setActiveAngle((prev) => {
+          const currentIndex = availableViews.indexOf(prev)
+          const nextIndex = (currentIndex + 1) % availableViews.length
+          return availableViews[nextIndex]
+        })
+      } else {
+        // Swipe Right -> Previous angle
+        setActiveAngle((prev) => {
+          const currentIndex = availableViews.indexOf(prev)
+          const prevIndex = (currentIndex - 1 + availableViews.length) % availableViews.length
+          return availableViews[prevIndex]
+        })
+      }
+    }
+  }
+
   return (
     <div 
       className="bg-[#111111] border border-[#1F1F1F] rounded-2xl overflow-hidden hover:border-[#E8FF00]/40 transition-all duration-300 flex flex-col group hover:-translate-y-1.5 shadow-xl hover:shadow-[0_10px_30px_rgba(232,255,0,0.02)]"
@@ -107,11 +151,16 @@ function ClientTransformationCard({ trans, language }) {
       }}
     >
       {/* Before/After vertical shape side-by-side images container */}
-      <div className="relative flex items-stretch aspect-[4/3] w-full overflow-hidden bg-black border-b border-[#1F1F1F]">
+      <div 
+        className="relative flex items-stretch aspect-[4/3] w-full overflow-hidden bg-black border-b border-[#1F1F1F]"
+        onTouchStart={handleTouchStart}
+        onTouchMove={handleTouchMove}
+        onTouchEnd={handleTouchEnd}
+      >
         
         {/* Float views indicators / toggle pill */}
         {availableViews.length > 1 && (
-          <div className="absolute top-4 left-1/2 -translate-x-1/2 flex items-center gap-1 bg-black/60 backdrop-blur-md border border-white/10 px-2 py-1 rounded-full z-30 transition-all duration-300 opacity-0 group-hover:opacity-100">
+          <div className="absolute top-4 left-1/2 -translate-x-1/2 flex items-center gap-1 bg-black/60 backdrop-blur-md border border-white/10 px-2 py-1 rounded-full z-30 transition-all duration-300 opacity-100 md:opacity-0 md:group-hover:opacity-100">
             {availableViews.map((angle) => (
               <button
                 type="button"

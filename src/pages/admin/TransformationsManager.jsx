@@ -3,10 +3,10 @@ import { Card } from '../../components/ui/Card'
 import { Button } from '../../components/ui/Button'
 import { Badge } from '../../components/ui/Badge'
 import { toast } from '../../store/toastStore'
-import { Plus, Trash2, Calendar, Save, Upload, CheckCircle2, RefreshCw, AlertTriangle } from 'lucide-react'
+import { Plus, Trash2, Calendar, Save, Upload, CheckCircle2, RefreshCw, AlertTriangle, Pencil } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 
-function AdminTransformationCard({ trans, setDeleteConfirm }) {
+function AdminTransformationCard({ trans, setDeleteConfirm, onEditClick }) {
   const [activeAngle, setActiveAngle] = useState('front')
 
   const availableViews = useMemo(() => {
@@ -113,14 +113,24 @@ function AdminTransformationCard({ trans, setDeleteConfirm }) {
           <span className="text-[10px] text-[#666666] font-bold uppercase">
             Order: {trans.sort_order}
           </span>
-          <button 
-            type="button"
-            onClick={() => setDeleteConfirm(trans)}
-            className="text-xs font-bold text-[#FF3A2D] hover:text-[#FF3A2D]/80 flex items-center gap-1 cursor-pointer outline-none"
-          >
-            <Trash2 size={13} />
-            <span>Remove Card</span>
-          </button>
+          <div className="flex items-center gap-3.5">
+            <button
+              type="button"
+              onClick={() => onEditClick(trans)}
+              className="text-xs font-bold text-[#E8FF00] hover:text-[#E8FF00]/80 flex items-center gap-1 cursor-pointer outline-none"
+            >
+              <Pencil size={13} />
+              <span>Edit Card</span>
+            </button>
+            <button 
+              type="button"
+              onClick={() => setDeleteConfirm(trans)}
+              className="text-xs font-bold text-[#FF3A2D] hover:text-[#FF3A2D]/80 flex items-center gap-1 cursor-pointer outline-none"
+            >
+              <Trash2 size={13} />
+              <span>Remove Card</span>
+            </button>
+          </div>
         </div>
       </div>
     </Card>
@@ -133,7 +143,10 @@ export function TransformationsManager() {
   const [saving, setSaving] = useState(false)
   const [deleteConfirm, setDeleteConfirm] = useState(null)
 
-  // Fields for adding a new transformation
+  // Editing state
+  const [editingTransformation, setEditingTransformation] = useState(null)
+
+  // Fields for adding/editing a transformation
   const [typeEn, setTypeEn] = useState('')
   const [typeAr, setTypeAr] = useState('')
   const [durationEn, setDurationEn] = useState('')
@@ -241,9 +254,55 @@ export function TransformationsManager() {
     setPreview(URL.createObjectURL(file))
   }
 
-  const handleAddTransformation = async (e) => {
+  const handleEditClick = (trans) => {
+    setEditingTransformation(trans)
+    setTypeEn(trans.type_en || '')
+    setTypeAr(trans.type_ar || '')
+    setDurationEn(trans.duration_en || '')
+    setDurationAr(trans.duration_ar || '')
+    setDescriptionEn(trans.description_en || '')
+    setDescriptionAr(trans.description_ar || '')
+    setSortOrder(String(trans.sort_order || 0))
+    setBeforePreview(trans.before_image_url || null)
+    setAfterPreview(trans.after_image_url || null)
+    setBeforeSidePreview(trans.before_side_url || null)
+    setAfterSidePreview(trans.after_side_url || null)
+    setBeforeBackPreview(trans.before_back_url || null)
+    setAfterBackPreview(trans.after_back_url || null)
+    setBeforeFile(null)
+    setAfterFile(null)
+    setBeforeSideFile(null)
+    setAfterSideFile(null)
+    setBeforeBackFile(null)
+    setAfterBackFile(null)
+  }
+
+  const handleCancelEdit = () => {
+    setEditingTransformation(null)
+    setTypeEn('')
+    setTypeAr('')
+    setDurationEn('')
+    setDurationAr('')
+    setDescriptionEn('')
+    setDescriptionAr('')
+    setSortOrder('0')
+    setBeforeFile(null)
+    setAfterFile(null)
+    setBeforePreview(null)
+    setAfterPreview(null)
+    setBeforeSideFile(null)
+    setAfterSideFile(null)
+    setBeforeSidePreview(null)
+    setAfterSidePreview(null)
+    setBeforeBackFile(null)
+    setAfterBackFile(null)
+    setBeforeBackPreview(null)
+    setAfterBackPreview(null)
+  }
+
+  const handleSaveTransformation = async (e) => {
     e.preventDefault()
-    if (!beforeFile || !afterFile) {
+    if (!editingTransformation && (!beforeFile || !afterFile)) {
       toast.error('Please upload both BEFORE and AFTER images.')
       return
     }
@@ -254,23 +313,40 @@ export function TransformationsManager() {
 
     setSaving(true)
     try {
-      // 1. Upload both files
-      const beforeUrl = await uploadImage(beforeFile, 'before')
-      const afterUrl = await uploadImage(afterFile, 'after')
+      // 1. Upload or reuse images
+      let beforeUrl = editingTransformation ? editingTransformation.before_image_url : null
+      if (beforeFile) {
+        beforeUrl = await uploadImage(beforeFile, 'before')
+      }
+
+      let afterUrl = editingTransformation ? editingTransformation.after_image_url : null
+      if (afterFile) {
+        afterUrl = await uploadImage(afterFile, 'after')
+      }
 
       // 2. Upload optional files
-      let beforeSideUrl = null
-      let afterSideUrl = null
-      let beforeBackUrl = null
-      let afterBackUrl = null
+      let beforeSideUrl = editingTransformation ? editingTransformation.before_side_url : null
+      if (beforeSideFile) {
+        beforeSideUrl = await uploadImage(beforeSideFile, 'before_side')
+      }
 
-      if (beforeSideFile) beforeSideUrl = await uploadImage(beforeSideFile, 'before_side')
-      if (afterSideFile) afterSideUrl = await uploadImage(afterSideFile, 'after_side')
-      if (beforeBackFile) beforeBackUrl = await uploadImage(beforeBackFile, 'before_back')
-      if (afterBackFile) afterBackUrl = await uploadImage(afterBackFile, 'after_back')
+      let afterSideUrl = editingTransformation ? editingTransformation.after_side_url : null
+      if (afterSideFile) {
+        afterSideUrl = await uploadImage(afterSideFile, 'after_side')
+      }
 
-      // 3. Insert record
-      const newTrans = {
+      let beforeBackUrl = editingTransformation ? editingTransformation.before_back_url : null
+      if (beforeBackFile) {
+        beforeBackUrl = await uploadImage(beforeBackFile, 'before_back')
+      }
+
+      let afterBackUrl = editingTransformation ? editingTransformation.after_back_url : null
+      if (afterBackFile) {
+        afterBackUrl = await uploadImage(afterBackFile, 'after_back')
+      }
+
+      // 3. Save / Update record
+      const payload = {
         before_image_url: beforeUrl,
         after_image_url: afterUrl,
         before_side_url: beforeSideUrl,
@@ -286,38 +362,28 @@ export function TransformationsManager() {
         sort_order: parseInt(sortOrder, 10) || 0
       }
 
-      const { data, error } = await supabase
-        .from('transformations')
-        .insert([newTrans])
-        .select()
+      if (editingTransformation) {
+        const { error } = await supabase
+          .from('transformations')
+          .update(payload)
+          .eq('id', editingTransformation.id)
 
-      if (error) throw error
+        if (error) throw error
+        toast.success('Transformation card updated successfully!')
+      } else {
+        const { data, error } = await supabase
+          .from('transformations')
+          .insert([payload])
+          .select()
 
-      toast.success('Transformation card added successfully!')
-      setTransformations(prev => [...prev, data[0]].sort((a, b) => a.sort_order - b.sort_order))
-      
-      // Reset form
-      setTypeEn('')
-      setTypeAr('')
-      setDurationEn('')
-      setDurationAr('')
-      setDescriptionEn('')
-      setDescriptionAr('')
-      setSortOrder('0')
-      setBeforeFile(null)
-      setAfterFile(null)
-      setBeforePreview(null)
-      setAfterPreview(null)
-      setBeforeSideFile(null)
-      setAfterSideFile(null)
-      setBeforeSidePreview(null)
-      setAfterSidePreview(null)
-      setBeforeBackFile(null)
-      setAfterBackFile(null)
-      setBeforeBackPreview(null)
-      setAfterBackPreview(null)
+        if (error) throw error
+        toast.success('Transformation card added successfully!')
+      }
+
+      handleCancelEdit()
+      fetchTransformations()
     } catch (err) {
-      console.error('Error adding transformation:', err)
+      console.error('Error saving transformation:', err)
       toast.error(err.message || 'Failed to save transformation.')
     } finally {
       setSaving(false)
@@ -403,26 +469,29 @@ export function TransformationsManager() {
                   key={trans.id}
                   trans={trans}
                   setDeleteConfirm={setDeleteConfirm}
+                  onEditClick={handleEditClick}
                 />
               ))}
             </div>
           )}
         </div>
 
-        {/* Right Side: Add new card */}
+        {/* Right Side: Add/Edit card */}
         <div className="lg:col-span-5">
           <Card className="space-y-4">
             <h3 className="font-bebas text-xl text-[#F5F5F5] tracking-wide border-b border-[#1F1F1F] pb-2 uppercase">
-              ADD TRANSFORMATION CARD
+              {editingTransformation ? 'EDIT TRANSFORMATION CARD' : 'ADD TRANSFORMATION CARD'}
             </h3>
             
-            <form onSubmit={handleAddTransformation} className="space-y-4">
+            <form onSubmit={handleSaveTransformation} className="space-y-4">
               
               {/* Before and After Image Uploads side-by-side */}
               <div className="grid grid-cols-2 gap-3">
                 {/* Before Upload */}
                 <div className="space-y-1.5">
-                  <label className="text-xs font-bold text-[#666666] uppercase tracking-wider block">Before (Front - Required)</label>
+                  <label className="text-xs font-bold text-[#666666] uppercase tracking-wider block">
+                    Before (Front - {editingTransformation ? 'Optional to change' : 'Required'})
+                  </label>
                   <div className="border-2 border-dashed border-[#1F1F1F] bg-[#161616] rounded-xl p-4 text-center hover:border-[#FF3A2D]/40 transition-colors relative cursor-pointer h-28 flex flex-col items-center justify-center overflow-hidden">
                     <input
                       type="file"
@@ -443,7 +512,9 @@ export function TransformationsManager() {
 
                 {/* After Upload */}
                 <div className="space-y-1.5">
-                  <label className="text-xs font-bold text-[#666666] uppercase tracking-wider block">After (Front - Required)</label>
+                  <label className="text-xs font-bold text-[#666666] uppercase tracking-wider block">
+                    After (Front - {editingTransformation ? 'Optional to change' : 'Required'})
+                  </label>
                   <div className="border-2 border-dashed border-[#1F1F1F] bg-[#161616] rounded-xl p-4 text-center hover:border-[#E8FF00]/40 transition-colors relative cursor-pointer h-28 flex flex-col items-center justify-center overflow-hidden">
                     <input
                       type="file"
@@ -637,9 +708,25 @@ export function TransformationsManager() {
                 />
               </div>
 
-              <Button type="submit" disabled={saving} className="w-full font-bebas uppercase tracking-wider text-base py-3">
-                {saving ? 'Uploading...' : 'Publish Transformation'}
-              </Button>
+              <div className="flex gap-3">
+                {editingTransformation && (
+                  <Button 
+                    type="button" 
+                    variant="outline" 
+                    onClick={handleCancelEdit} 
+                    className="flex-1 font-bebas uppercase tracking-wider text-base py-3"
+                  >
+                    Cancel
+                  </Button>
+                )}
+                <Button 
+                  type="submit" 
+                  disabled={saving} 
+                  className="flex-1 font-bebas uppercase tracking-wider text-base py-3"
+                >
+                  {saving ? 'Saving...' : editingTransformation ? 'Save Changes' : 'Publish Transformation'}
+                </Button>
+              </div>
             </form>
           </Card>
         </div>

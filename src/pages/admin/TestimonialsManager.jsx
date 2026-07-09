@@ -5,7 +5,7 @@ import { toast } from '../../store/toastStore'
 import { Card } from '../../components/ui/Card'
 import { Button } from '../../components/ui/Button'
 import { Badge } from '../../components/ui/Badge'
-import { Trash2, AlertTriangle, Star, Plus, Quote } from 'lucide-react'
+import { Trash2, AlertTriangle, Star, Plus, Quote, Pencil } from 'lucide-react'
 
 export default function TestimonialsManager() {
   const { language } = useLanguageStore()
@@ -22,6 +22,9 @@ export default function TestimonialsManager() {
   const [quoteEn, setQuoteEn] = useState('')
   const [quoteAr, setQuoteAr] = useState('')
   const [sortOrder, setSortOrder] = useState('0')
+
+  // Editing state
+  const [editingTestimonial, setEditingTestimonial] = useState(null)
 
   // Deletion modal states
   const [deleteConfirm, setDeleteConfirm] = useState(null)
@@ -49,7 +52,7 @@ export default function TestimonialsManager() {
     }
   }
 
-  const handleAddTestimonial = async (e) => {
+  const handleSaveTestimonial = async (e) => {
     e.preventDefault()
 
     if (!nameEn || !nameAr || !goalEn || !goalAr || !quoteEn || !quoteAr) {
@@ -70,23 +73,25 @@ export default function TestimonialsManager() {
         sort_order: parseInt(sortOrder, 10) || 0
       }
 
-      const { error } = await supabase
-        .from('testimonials')
-        .insert([payload])
+      if (editingTestimonial) {
+        const { error } = await supabase
+          .from('testimonials')
+          .update(payload)
+          .eq('id', editingTestimonial.id)
 
-      if (error) throw error
+        if (error) throw error
+        toast.success('Testimonial updated successfully!')
+      } else {
+        const { error } = await supabase
+          .from('testimonials')
+          .insert([payload])
 
-      toast.success('Testimonial added successfully!')
+        if (error) throw error
+        toast.success('Testimonial added successfully!')
+      }
+
       // Reset form
-      setNameEn('')
-      setNameAr('')
-      setGoalEn('')
-      setGoalAr('')
-      setRating(5)
-      setQuoteEn('')
-      setQuoteAr('')
-      setSortOrder('0')
-
+      handleCancelEdit()
       fetchTestimonials()
     } catch (err) {
       console.error('Save error:', err)
@@ -94,6 +99,30 @@ export default function TestimonialsManager() {
     } finally {
       setSaving(false)
     }
+  }
+
+  const handleEditClick = (item) => {
+    setEditingTestimonial(item)
+    setNameEn(item.name_en || '')
+    setNameAr(item.name_ar || '')
+    setGoalEn(item.goal_en || '')
+    setGoalAr(item.goal_ar || '')
+    setRating(item.rating || 5)
+    setQuoteEn(item.quote_en || '')
+    setQuoteAr(item.quote_ar || '')
+    setSortOrder(String(item.sort_order || 0))
+  }
+
+  const handleCancelEdit = () => {
+    setEditingTestimonial(null)
+    setNameEn('')
+    setNameAr('')
+    setGoalEn('')
+    setGoalAr('')
+    setRating(5)
+    setQuoteEn('')
+    setQuoteAr('')
+    setSortOrder('0')
   }
 
   const confirmDelete = async () => {
@@ -153,7 +182,15 @@ export default function TestimonialsManager() {
                   key={item.id} 
                   className="bg-[#111111] border border-[#1F1F1F] hover:border-[#E8FF00]/25 transition-all p-5 flex gap-4 items-start relative overflow-hidden group shadow-lg"
                 >
-                  <div className="absolute top-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                  <div className="absolute top-2 right-2 flex gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <button
+                      type="button"
+                      onClick={() => handleEditClick(item)}
+                      className="p-1.5 rounded-lg bg-[#E8FF00]/10 hover:bg-[#E8FF00] text-[#E8FF00] hover:text-[#0A0A0A] transition-all cursor-pointer border border-[#E8FF00]/20 hover:border-[#E8FF00]"
+                      title="Edit Testimonial"
+                    >
+                      <Pencil size={14} />
+                    </button>
                     <button
                       type="button"
                       onClick={() => setDeleteConfirm(item.id)}
@@ -203,17 +240,21 @@ export default function TestimonialsManager() {
           )}
         </div>
 
-        {/* ── Add Form ── */}
+        {/* ── Form Card ── */}
         <div className="lg:col-span-5">
           <Card className="bg-[#111111] border border-[#1F1F1F] p-6 shadow-xl space-y-6">
             <div>
               <h3 className="font-bebas text-2xl tracking-wide text-[#F5F5F5] uppercase">
-                Add Testimonial
+                {editingTestimonial ? 'Edit Testimonial' : 'Add Testimonial'}
               </h3>
-              <p className="text-xs text-[#666666]">Add a new bilingual client testimonial review</p>
+              <p className="text-xs text-[#666666]">
+                {editingTestimonial 
+                  ? `Modify testimonial for ${editingTestimonial.name_en}` 
+                  : 'Add a new bilingual client testimonial review'}
+              </p>
             </div>
 
-            <form onSubmit={handleAddTestimonial} className="space-y-4">
+            <form onSubmit={handleSaveTestimonial} className="space-y-4">
               {/* Names */}
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1.5">
@@ -324,9 +365,25 @@ export default function TestimonialsManager() {
                 />
               </div>
 
-              <Button type="submit" disabled={saving} className="w-full font-bebas uppercase tracking-wider text-base py-3">
-                {saving ? 'Saving...' : 'Publish Testimonial'}
-              </Button>
+              <div className="flex gap-3">
+                {editingTestimonial && (
+                  <Button 
+                    type="button" 
+                    variant="outline" 
+                    onClick={handleCancelEdit} 
+                    className="flex-1 font-bebas uppercase tracking-wider text-base py-3"
+                  >
+                    Cancel
+                  </Button>
+                )}
+                <Button 
+                  type="submit" 
+                  disabled={saving} 
+                  className="flex-1 font-bebas uppercase tracking-wider text-base py-3"
+                >
+                  {saving ? 'Saving...' : editingTestimonial ? 'Save Changes' : 'Publish Testimonial'}
+                </Button>
+              </div>
             </form>
           </Card>
         </div>

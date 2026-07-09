@@ -107,7 +107,7 @@ function ClientTransformationCard({ trans, language }) {
       }}
     >
       {/* Before/After vertical shape side-by-side images container */}
-      <div className="relative flex items-stretch h-[380px] overflow-hidden bg-black border-b border-[#1F1F1F]">
+      <div className="relative flex items-stretch aspect-[4/3] w-full overflow-hidden bg-black border-b border-[#1F1F1F]">
         
         {/* Float views indicators / toggle pill */}
         {availableViews.length > 1 && (

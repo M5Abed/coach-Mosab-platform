@@ -36,9 +36,9 @@ function AdminTransformationCard({ trans, setDeleteConfirm, onEditClick }) {
     <Card className="p-5 flex flex-col md:flex-row gap-5 items-stretch relative hover:border-[#E8FF00]/30 transition-all">
       {/* Before/After side-by-side vertical images */}
       <div className="flex flex-col gap-2.5 w-full md:w-[260px] shrink-0">
-        <div className="flex gap-2 h-[180px]">
+        <div className="flex gap-2">
           {/* Before Image */}
-          <div className="flex-1 bg-black border border-[#1F1F1F] rounded-lg overflow-hidden relative">
+          <div className="flex-1 aspect-[2/3] bg-black border border-[#1F1F1F] rounded-lg overflow-hidden relative">
             <img 
               src={beforeImage} 
               alt="Before" 
@@ -50,7 +50,7 @@ function AdminTransformationCard({ trans, setDeleteConfirm, onEditClick }) {
           </div>
 
           {/* After Image */}
-          <div className="flex-1 bg-black border border-[#1F1F1F] rounded-lg overflow-hidden relative">
+          <div className="flex-1 aspect-[2/3] bg-black border border-[#1F1F1F] rounded-lg overflow-hidden relative">
             <img 
               src={afterImage} 
               alt="After" 

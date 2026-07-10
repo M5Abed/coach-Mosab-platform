@@ -22,7 +22,7 @@ import { useAuthStore } from '../store/authStore'
 import { supabase } from '../lib/supabase'
 
 // Animated intersection count-up counter component
-function Counter({ endValue, duration = 1500, suffix = "" }) {
+function Counter({ endValue, duration = 1500, prefix = "", suffix = "" }) {
   const [count, setCount] = useState(0)
   const elementRef = useRef(null)
   const [hasStarted, setHasStarted] = useState(false)
@@ -62,7 +62,7 @@ function Counter({ endValue, duration = 1500, suffix = "" }) {
 
   return (
     <span ref={elementRef} className="font-bebas text-5xl md:text-6xl text-[#E8FF00] tracking-wider block">
-      {count}{suffix}
+      {prefix}{count}{suffix}
     </span>
   )
 }
@@ -513,7 +513,7 @@ export function Landing() {
       <section className="bg-[#111111] border-b border-[#1F1F1F] py-12 px-6 md:px-12">
         <div className="max-w-7xl mx-auto grid grid-cols-2 md:grid-cols-4 gap-8 text-center">
           <div>
-            <Counter endValue="500" suffix="+" />
+            <Counter endValue="100" prefix="+" />
             <p className="text-xs uppercase text-[#666666] font-bold tracking-widest mt-2">{t.activeClients}</p>
           </div>
           <div>
@@ -525,7 +525,7 @@ export function Landing() {
             <p className="text-xs uppercase text-[#666666] font-bold tracking-widest mt-2">{t.workoutRoutines}</p>
           </div>
           <div>
-            <Counter endValue="98" suffix="%" />
+            <Counter endValue="100" suffix="%" />
             <p className="text-xs uppercase text-[#666666] font-bold tracking-widest mt-2">{t.clientSatisfaction}</p>
           </div>
         </div>
@@ -624,18 +624,28 @@ export function Landing() {
 
               {/* Quote */}
               <p className="text-[#F5F5F5] text-base md:text-lg italic leading-relaxed font-dmsans">
-                "{language === 'ar' ? testimonials[currentTestimonial].quote_ar : testimonials[currentTestimonial].quote_en}"
+                "{language === 'ar' 
+                  ? testimonials[currentTestimonial].quote_ar 
+                  : (testimonials[currentTestimonial].quote_en || testimonials[currentTestimonial].quote_ar)}"
               </p>
 
               {/* Client Bio */}
               <div className="mt-6 flex items-center justify-between border-t border-[#1F1F1F] pt-4">
                 <div>
                   <h4 className="font-bebas text-xl text-[#E8FF00] tracking-wide">
-                    {language === 'ar' ? testimonials[currentTestimonial].name_ar : testimonials[currentTestimonial].name_en}
+                    {language === 'ar' 
+                      ? testimonials[currentTestimonial].name_ar 
+                      : (testimonials[currentTestimonial].name_en || testimonials[currentTestimonial].name_ar)}
                   </h4>
-                  <p className="text-xs text-[#666666] font-semibold uppercase tracking-wider">
-                    {language === 'ar' ? "الهدف: " : "Goal: "}{language === 'ar' ? testimonials[currentTestimonial].goal_ar : testimonials[currentTestimonial].goal_en}
-                  </p>
+                  {((language === 'ar' && testimonials[currentTestimonial].goal_ar) || 
+                    (language !== 'ar' && (testimonials[currentTestimonial].goal_en || testimonials[currentTestimonial].goal_ar))) && (
+                    <p className="text-xs text-[#666666] font-semibold uppercase tracking-wider">
+                      {language === 'ar' ? "الهدف: " : "Goal: "}
+                      {language === 'ar' 
+                        ? testimonials[currentTestimonial].goal_ar 
+                        : (testimonials[currentTestimonial].goal_en || testimonials[currentTestimonial].goal_ar)}
+                    </p>
+                  )}
                 </div>
 
                 {/* Navigation controls */}

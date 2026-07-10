@@ -55,8 +55,8 @@ export default function TestimonialsManager() {
   const handleSaveTestimonial = async (e) => {
     e.preventDefault()
 
-    if (!nameEn || !nameAr || !goalEn || !goalAr || !quoteEn || !quoteAr) {
-      toast.error('Please fill in all the required fields.')
+    if (!nameAr || !quoteAr) {
+      toast.error('Please fill in the required Arabic Name and Quote fields.')
       return
     }
 
@@ -96,12 +96,12 @@ export default function TestimonialsManager() {
       }
 
       const payload = {
-        name_en: nameEn,
+        name_en: nameEn || null,
         name_ar: nameAr,
-        goal_en: goalEn,
-        goal_ar: goalAr,
+        goal_en: goalEn || null,
+        goal_ar: goalAr || null,
         rating: parseInt(rating, 10) || 5,
-        quote_en: quoteEn,
+        quote_en: quoteEn || null,
         quote_ar: quoteAr,
         sort_order: targetOrder
       }
@@ -241,7 +241,7 @@ export default function TestimonialsManager() {
                   <div className="space-y-3 flex-1">
                     <div className="flex flex-wrap gap-2 items-center">
                       <h4 className="font-bebas text-lg text-[#F5F5F5] tracking-wide">
-                        {item.name_en} / {item.name_ar}
+                        {item.name_en ? `${item.name_en} / ` : ''}{item.name_ar}
                       </h4>
                       <Badge variant="outline" className="text-[9px] font-bold py-0.5 px-2 text-[#888] border-[#222]">
                         Sort: {item.sort_order}
@@ -257,12 +257,12 @@ export default function TestimonialsManager() {
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs font-medium border-t border-[#1F1F1F]/40 pt-2.5">
                       <div className="space-y-1">
                         <span className="text-[#666] font-bold uppercase tracking-wider text-[9px]">Goal (English)</span>
-                        <p className="text-[#A0A0A0]">{item.goal_en}</p>
-                        <p className="text-[#F5F5F5] italic font-dmsans">"{item.quote_en}"</p>
+                        <p className="text-[#A0A0A0]">{item.goal_en || <span className="text-[#444] italic">None</span>}</p>
+                        <p className="text-[#F5F5F5] italic font-dmsans">{item.quote_en ? `"${item.quote_en}"` : <span className="text-[#444] italic">No English quote</span>}</p>
                       </div>
                       <div className="space-y-1 text-right">
                         <span className="text-[#666] font-bold uppercase tracking-wider text-[9px] block">الهدف (العربية)</span>
-                        <p className="text-[#A0A0A0]">{item.goal_ar}</p>
+                        <p className="text-[#A0A0A0]">{item.goal_ar || <span className="text-[#444] italic">لا يوجد</span>}</p>
                         <p className="text-[#F5F5F5] italic font-dmsans">"{item.quote_ar}"</p>
                       </div>
                     </div>
@@ -291,14 +291,13 @@ export default function TestimonialsManager() {
               {/* Names */}
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1.5">
-                  <label className="text-xs font-bold text-[#666666] uppercase tracking-wider block">Name (English)</label>
+                  <label className="text-xs font-bold text-[#666666] uppercase tracking-wider block">Name (English - Optional)</label>
                   <input
                     type="text"
                     placeholder="Omar Karem"
                     value={nameEn}
                     onChange={(e) => setNameEn(e.target.value)}
                     className="w-full bg-[#161616] border border-[#1F1F1F] rounded-lg py-2 px-3 text-sm text-[#F5F5F5] outline-none focus:border-[#E8FF00]/40 transition-colors"
-                    required
                   />
                 </div>
                 <div className="space-y-1.5">
@@ -317,25 +316,23 @@ export default function TestimonialsManager() {
               {/* Goals */}
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1.5">
-                  <label className="text-xs font-bold text-[#666666] uppercase tracking-wider block">Goal (English)</label>
+                  <label className="text-xs font-bold text-[#666666] uppercase tracking-wider block">Goal (English - Optional)</label>
                   <input
                     type="text"
                     placeholder="Fat Loss & Muscle Gain"
                     value={goalEn}
                     onChange={(e) => setGoalEn(e.target.value)}
                     className="w-full bg-[#161616] border border-[#1F1F1F] rounded-lg py-2 px-3 text-sm text-[#F5F5F5] outline-none focus:border-[#E8FF00]/40 transition-colors"
-                    required
                   />
                 </div>
                 <div className="space-y-1.5">
-                  <label className="text-xs font-bold text-[#666666] uppercase tracking-wider block">الهدف (العربية)</label>
+                  <label className="text-xs font-bold text-[#666666] uppercase tracking-wider block">الهدف (العربية - اختياري)</label>
                   <input
                     type="text"
                     placeholder="خسارة دهون وبناء عضلات"
                     value={goalAr}
                     onChange={(e) => setGoalAr(e.target.value)}
                     className="w-full bg-[#161616] border border-[#1F1F1F] rounded-lg py-2 px-3 text-sm text-[#F5F5F5] outline-none focus:border-[#E8FF00]/40 transition-colors text-right"
-                    required
                   />
                 </div>
               </div>
@@ -364,14 +361,13 @@ export default function TestimonialsManager() {
 
               {/* Quotes */}
               <div className="space-y-1.5">
-                <label className="text-xs font-bold text-[#666666] uppercase tracking-wider block">Quote (English)</label>
+                <label className="text-xs font-bold text-[#666666] uppercase tracking-wider block">Quote (English - Optional)</label>
                 <textarea
                   rows={3}
                   placeholder="Coach Mosab completely transformed my physique..."
                   value={quoteEn}
                   onChange={(e) => setQuoteEn(e.target.value)}
                   className="w-full bg-[#161616] border border-[#1F1F1F] rounded-lg py-2 px-3 text-sm text-[#F5F5F5] outline-none resize-none focus:border-[#E8FF00]/40 transition-colors font-sans"
-                  required
                 />
               </div>
 

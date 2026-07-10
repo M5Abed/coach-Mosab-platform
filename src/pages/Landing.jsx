@@ -291,6 +291,34 @@ export function Landing() {
   const { language } = useLanguageStore()
   const t = translations[language]
   const [currentTestimonial, setCurrentTestimonial] = useState(0)
+
+  // Testimonial swipe gesture states
+  const [touchStart, setTouchStart] = useState(null)
+  const [touchEnd, setTouchEnd] = useState(null)
+
+  const minSwipeDistance = 50
+
+  const handleTestimonialTouchStart = (e) => {
+    setTouchEnd(null)
+    setTouchStart(e.targetTouches[0].clientX)
+  }
+
+  const handleTestimonialTouchMove = (e) => {
+    setTouchEnd(e.targetTouches[0].clientX)
+  }
+
+  const handleTestimonialTouchEnd = () => {
+    if (!touchStart || !touchEnd) return
+    const distance = touchStart - touchEnd
+    const isLeftSwipe = distance > minSwipeDistance
+    const isRightSwipe = distance < -minSwipeDistance
+    if (isLeftSwipe) {
+      setCurrentTestimonial((prev) => (prev + 1) % testimonials.length)
+    } else if (isRightSwipe) {
+      setCurrentTestimonial((prev) => (prev === 0 ? testimonials.length - 1 : prev - 1))
+    }
+  }
+
   const user = useAuthStore((state) => state.user)
 
   const [transformations, setTransformations] = useState([])
@@ -339,11 +367,12 @@ export function Landing() {
 
   // Auto scroll testimonials
   useEffect(() => {
+    if (testimonials.length <= 1) return
     const timer = setInterval(() => {
       setCurrentTestimonial((prev) => (prev + 1) % testimonials.length)
     }, 6000)
     return () => clearInterval(timer)
-  }, [testimonials.length])
+  }, [testimonials.length, currentTestimonial])
 
   const pricingTiers = language === 'ar' ? [
     {
@@ -606,68 +635,150 @@ export function Landing() {
       )}
 
       {/* Testimonials Carousel */}
-      {testimonials.length > 0 && (
-        <section className="py-20 px-6 md:px-12 bg-[#111111]/30 border-b border-[#1F1F1F]">
-          <div className="max-w-4xl mx-auto space-y-8 relative">
-            <div className="text-center space-y-4">
-              <span className="font-bebas text-sm text-[#E8FF00] tracking-widest block uppercase">{t.testimonialsLabel}</span>
-              <h2 className="font-bebas text-4xl md:text-5xl text-[#F5F5F5] uppercase tracking-wide">{t.testimonialsTitle}</h2>
-            </div>
+      {testimonials.length > 0 && (() => {
+        const leftIdx = (currentTestimonial - 1 + testimonials.length) % testimonials.length
+        const rightIdx = (currentTestimonial + 1) % testimonials.length
+        const showSideCards = testimonials.length >= 2
 
-            <div className="min-h-[220px] bg-[#161616] border border-[#1F1F1F] rounded-xl p-8 relative flex flex-col justify-between group">
-              {/* Rating */}
-              <div className="flex gap-1 text-[#E8FF00] mb-4">
-                {Array(testimonials[currentTestimonial].rating || 5).fill(0).map((_, i) => (
-                  <Star key={i} size={16} fill="#E8FF00" />
-                ))}
+        return (
+          <section className="py-20 px-6 md:px-12 bg-[#111111]/30 border-b border-[#1F1F1F] overflow-hidden">
+            <div className="max-w-6xl mx-auto space-y-8 relative">
+              <div className="text-center space-y-4">
+                <span className="font-bebas text-sm text-[#E8FF00] tracking-widest block uppercase">{t.testimonialsLabel}</span>
+                <h2 className="font-bebas text-4xl md:text-5xl text-[#F5F5F5] uppercase tracking-wide">{t.testimonialsTitle}</h2>
               </div>
 
-              {/* Quote */}
-              <p className="text-[#F5F5F5] text-base md:text-lg italic leading-relaxed font-dmsans">
-                "{language === 'ar' 
-                  ? testimonials[currentTestimonial].quote_ar 
-                  : (testimonials[currentTestimonial].quote_en || testimonials[currentTestimonial].quote_ar)}"
-              </p>
+              {/* Slider Wrapper */}
+              <div 
+                key={currentTestimonial}
+                className="grid grid-cols-1 md:grid-cols-12 gap-6 items-center animate-fade-slide"
+                onTouchStart={handleTestimonialTouchStart}
+                onTouchMove={handleTestimonialTouchMove}
+                onTouchEnd={handleTestimonialTouchEnd}
+              >
+                {/* Left Testimonial (Greyed out) */}
+                {showSideCards && (
+                  <div 
+                    onClick={() => setCurrentTestimonial(leftIdx)}
+                    className="col-span-3 hidden md:flex flex-col justify-between min-h-[220px] bg-[#161616]/40 border border-[#1F1F1F] rounded-xl p-6 opacity-30 grayscale hover:opacity-50 hover:grayscale-0 scale-95 transition-all duration-300 cursor-pointer select-none"
+                  >
+                    <div>
+                      <div className="flex gap-1 text-[#E8FF00]/40 mb-3">
+                        {Array(testimonials[leftIdx].rating || 5).fill(0).map((_, i) => (
+                          <Star key={i} size={12} fill="#E8FF00" className="opacity-40" />
+                        ))}
+                      </div>
+                      <p className="text-[#888] text-xs md:text-sm italic leading-relaxed font-dmsans line-clamp-4">
+                        "{language === 'ar' 
+                          ? testimonials[leftIdx].quote_ar 
+                          : (testimonials[leftIdx].quote_en || testimonials[leftIdx].quote_ar)}"
+                      </p>
+                    </div>
+                    <div className="mt-4 border-t border-[#1F1F1F]/40 pt-3">
+                      <h4 className="font-bebas text-base text-[#888] tracking-wide">
+                        {language === 'ar' 
+                          ? testimonials[leftIdx].name_ar 
+                          : (testimonials[leftIdx].name_en || testimonials[leftIdx].name_ar)}
+                      </h4>
+                    </div>
+                  </div>
+                )}
 
-              {/* Client Bio */}
-              <div className="mt-6 flex items-center justify-between border-t border-[#1F1F1F] pt-4">
-                <div>
-                  <h4 className="font-bebas text-xl text-[#E8FF00] tracking-wide">
-                    {language === 'ar' 
-                      ? testimonials[currentTestimonial].name_ar 
-                      : (testimonials[currentTestimonial].name_en || testimonials[currentTestimonial].name_ar)}
-                  </h4>
-                  {((language === 'ar' && testimonials[currentTestimonial].goal_ar) || 
-                    (language !== 'ar' && (testimonials[currentTestimonial].goal_en || testimonials[currentTestimonial].goal_ar))) && (
-                    <p className="text-xs text-[#666666] font-semibold uppercase tracking-wider">
-                      {language === 'ar' ? "الهدف: " : "Goal: "}
-                      {language === 'ar' 
-                        ? testimonials[currentTestimonial].goal_ar 
-                        : (testimonials[currentTestimonial].goal_en || testimonials[currentTestimonial].goal_ar)}
+                {/* Active Center Testimonial */}
+                <div 
+                  className={`${showSideCards ? 'col-span-12 md:col-span-6' : 'col-span-12 max-w-2xl mx-auto'} w-full min-h-[220px] bg-[#161616] border border-[#E8FF00]/30 shadow-[0_0_30px_rgba(232,255,0,0.03)] rounded-xl p-8 relative flex flex-col justify-between transition-all duration-300`}
+                >
+                  <div>
+                    {/* Rating */}
+                    <div className="flex gap-1 text-[#E8FF00] mb-4">
+                      {Array(testimonials[currentTestimonial].rating || 5).fill(0).map((_, i) => (
+                        <Star key={i} size={16} fill="#E8FF00" />
+                      ))}
+                    </div>
+
+                    {/* Quote */}
+                    <p className="text-[#F5F5F5] text-base md:text-lg italic leading-relaxed font-dmsans">
+                      "{language === 'ar' 
+                        ? testimonials[currentTestimonial].quote_ar 
+                        : (testimonials[currentTestimonial].quote_en || testimonials[currentTestimonial].quote_ar)}"
                     </p>
-                  )}
+                  </div>
+
+                  {/* Client Bio */}
+                  <div className="mt-6 flex items-center justify-between border-t border-[#1F1F1F] pt-4">
+                    <div>
+                      <h4 className="font-bebas text-xl text-[#E8FF00] tracking-wide">
+                        {language === 'ar' 
+                          ? testimonials[currentTestimonial].name_ar 
+                          : (testimonials[currentTestimonial].name_en || testimonials[currentTestimonial].name_ar)}
+                      </h4>
+                      {((language === 'ar' && testimonials[currentTestimonial].goal_ar) || 
+                        (language !== 'ar' && (testimonials[currentTestimonial].goal_en || testimonials[currentTestimonial].goal_ar))) && (
+                        <p className="text-xs text-[#666666] font-semibold uppercase tracking-wider">
+                          {language === 'ar' ? "الهدف: " : "Goal: "}
+                          {language === 'ar' 
+                            ? testimonials[currentTestimonial].goal_ar 
+                            : (testimonials[currentTestimonial].goal_en || testimonials[currentTestimonial].goal_ar)}
+                        </p>
+                      )}
+                    </div>
+
+                    {/* Navigation controls */}
+                    <div className="flex gap-2">
+                      <button 
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          setCurrentTestimonial((prev) => (prev === 0 ? testimonials.length - 1 : prev - 1))
+                        }}
+                        className="w-8 h-8 rounded border border-[#1F1F1F] flex items-center justify-center text-[#666666] hover:text-[#E8FF00] hover:border-[#E8FF00]/30 transition-all cursor-pointer"
+                      >
+                        <ChevronLeft size={18} />
+                      </button>
+                      <button 
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          setCurrentTestimonial((prev) => (prev + 1) % testimonials.length)
+                        }}
+                        className="w-8 h-8 rounded border border-[#1F1F1F] flex items-center justify-center text-[#666666] hover:text-[#E8FF00] hover:border-[#E8FF00]/30 transition-all cursor-pointer"
+                      >
+                        <ChevronRight size={18} />
+                      </button>
+                    </div>
+                  </div>
                 </div>
 
-                {/* Navigation controls */}
-                <div className="flex gap-2">
-                  <button 
-                    onClick={() => setCurrentTestimonial((prev) => (prev === 0 ? testimonials.length - 1 : prev - 1))}
-                    className="w-8 h-8 rounded border border-[#1F1F1F] flex items-center justify-center text-[#666666] hover:text-[#E8FF00] hover:border-[#E8FF00]/30 transition-all cursor-pointer"
+                {/* Right Testimonial (Greyed out) */}
+                {showSideCards && (
+                  <div 
+                    onClick={() => setCurrentTestimonial(rightIdx)}
+                    className="col-span-3 hidden md:flex flex-col justify-between min-h-[220px] bg-[#161616]/40 border border-[#1F1F1F] rounded-xl p-6 opacity-30 grayscale hover:opacity-50 hover:grayscale-0 scale-95 transition-all duration-300 cursor-pointer select-none"
                   >
-                    <ChevronLeft size={18} />
-                  </button>
-                  <button 
-                    onClick={() => setCurrentTestimonial((prev) => (prev + 1) % testimonials.length)}
-                    className="w-8 h-8 rounded border border-[#1F1F1F] flex items-center justify-center text-[#666666] hover:text-[#E8FF00] hover:border-[#E8FF00]/30 transition-all cursor-pointer"
-                  >
-                    <ChevronRight size={18} />
-                  </button>
-                </div>
+                    <div>
+                      <div className="flex gap-1 text-[#E8FF00]/40 mb-3">
+                        {Array(testimonials[rightIdx].rating || 5).fill(0).map((_, i) => (
+                          <Star key={i} size={12} fill="#E8FF00" className="opacity-40" />
+                        ))}
+                      </div>
+                      <p className="text-[#888] text-xs md:text-sm italic leading-relaxed font-dmsans line-clamp-4">
+                        "{language === 'ar' 
+                          ? testimonials[rightIdx].quote_ar 
+                          : (testimonials[rightIdx].quote_en || testimonials[rightIdx].quote_ar)}"
+                      </p>
+                    </div>
+                    <div className="mt-4 border-t border-[#1F1F1F]/40 pt-3">
+                      <h4 className="font-bebas text-base text-[#888] tracking-wide">
+                        {language === 'ar' 
+                          ? testimonials[rightIdx].name_ar 
+                          : (testimonials[rightIdx].name_en || testimonials[rightIdx].name_ar)}
+                      </h4>
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
-          </div>
-        </section>
-      )}
+          </section>
+        )
+      })()}
 
       {/* Pricing Section */}
       <section id="pricing-section" className="py-20 px-6 md:px-12 max-w-7xl mx-auto border-b border-[#1F1F1F]">

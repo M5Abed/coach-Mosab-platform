@@ -237,6 +237,30 @@ function ClientTransformationCard({ trans, language }) {
         </div>
       </div>
 
+      {/* Dots Indicator */}
+      {availableViews.length > 1 && (
+        <div className="flex justify-center items-center gap-2 py-3 bg-[#111111] border-b border-[#1F1F1F]/60">
+          {availableViews.map((angle) => (
+            <button
+              key={angle}
+              type="button"
+              onClick={(e) => {
+                e.preventDefault()
+                e.stopPropagation()
+                setActiveAngle(angle)
+              }}
+              className={`h-1.5 rounded-full transition-all duration-300 cursor-pointer ${
+                activeAngle === angle
+                  ? 'w-6 bg-[#E8FF00]'
+                  : 'w-1.5 bg-[#444444] hover:bg-[#666666]'
+              }`}
+              aria-label={`View ${angle}`}
+              title={language === 'ar' ? (angle === 'front' ? 'أمام' : angle === 'side' ? 'جانب' : 'خلف') : angle}
+            />
+          ))}
+        </div>
+      )}
+
       {/* Info details */}
       <div className="p-6 flex flex-col justify-between flex-1 space-y-4">
         <div className="space-y-3">

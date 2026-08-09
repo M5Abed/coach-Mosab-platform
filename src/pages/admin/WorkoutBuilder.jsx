@@ -4,7 +4,7 @@ import { Button } from '../../components/ui/Button'
 import { Badge } from '../../components/ui/Badge'
 import { supabase } from '../../lib/supabase'
 import { toast } from '../../store/toastStore'
-import { Plus, Trash2, GripVertical, Save, Dumbbell, RefreshCw } from 'lucide-react'
+import { Plus, Trash2, GripVertical, Save, Dumbbell, RefreshCw, Youtube } from 'lucide-react'
 
 export function WorkoutBuilder() {
   const [clientsList, setClientsList] = useState([])
@@ -18,8 +18,8 @@ export function WorkoutBuilder() {
 
   // Current exercises list
   const [exercises, setExercises] = useState([
-    { id: 1, name: 'Barbell Flat Bench Press', sets: 4, reps: '8-10', rest: '90s', rir: '0 RIR', difficulty: 'Hard', day: 1 },
-    { id: 2, name: 'Incline Dumbbell Flyes', sets: 3, reps: '12', rest: '75s', rir: '2 RIR', difficulty: 'Medium', day: 1 }
+    { id: 1, name: 'Barbell Flat Bench Press', sets: 4, reps: '8-10', rest: '90s', rir: '0 RIR', difficulty: 'Hard', day: 1, youtubeUrl: '' },
+    { id: 2, name: 'Incline Dumbbell Flyes', sets: 3, reps: '12', rest: '75s', rir: '2 RIR', difficulty: 'Medium', day: 1, youtubeUrl: '' }
   ])
 
   // Options for dropdowns
@@ -38,6 +38,7 @@ export function WorkoutBuilder() {
   const [exRest, setExRest] = useState('90s')
   const [exRir, setExRir] = useState('2 RIR')
   const [exDay, setExDay] = useState(1)
+  const [exYoutubeUrl, setExYoutubeUrl] = useState('')
 
   useEffect(() => {
     if (exDay > daysPerWeek) {
@@ -89,11 +90,13 @@ export function WorkoutBuilder() {
       rest: exRest,
       rir: exRir,
       difficulty: getDifficultyFromRir(exRir),
-      day: exDay
+      day: exDay,
+      youtubeUrl: exYoutubeUrl.trim()
     }
 
     setExercises([...exercises, newEx])
     setExName('')
+    setExYoutubeUrl('')
     toast.success('Exercise added to list.')
   }
 
@@ -284,6 +287,11 @@ export function WorkoutBuilder() {
                               <span>{ex.sets} Sets · {ex.reps} Reps</span>
                               <span>•</span>
                               <span>Rest: {ex.rest}</span>
+                              {ex.youtubeUrl && (
+                                <span className="flex items-center gap-0.5 text-[#FF0000]">
+                                  <Youtube size={10} /> Video
+                                </span>
+                              )}
                             </div>
                           </div>
                         </div>
@@ -400,6 +408,19 @@ export function WorkoutBuilder() {
                     <option key={d} value={d}>Day {d}</option>
                   ))}
                 </select>
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-xs font-bold text-[#666666] uppercase tracking-wider block flex items-center gap-1.5">
+                  <Youtube size={12} className="text-[#FF0000]" /> YouTube Demo Link <span className="text-[#444] normal-case font-normal">(optional)</span>
+                </label>
+                <input
+                  type="url"
+                  placeholder="https://youtube.com/watch?v=..."
+                  value={exYoutubeUrl}
+                  onChange={(e) => setExYoutubeUrl(e.target.value)}
+                  className="w-full bg-[#161616] border border-[#1F1F1F] rounded-lg py-2.5 px-4 text-sm text-[#F5F5F5] outline-none placeholder-[#444]"
+                />
               </div>
 
               <Button type="submit" variant="outline" className="w-full font-bebas uppercase tracking-wider text-sm py-2.5">

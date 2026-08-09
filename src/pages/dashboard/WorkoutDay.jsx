@@ -9,7 +9,7 @@ import { useLanguageStore } from '../../store/languageStore'
 import { translations } from '../../utils/translations'
 import { 
   ArrowLeft, Check, ChevronDown, ChevronUp, Flame, 
-  Play, Pause, RotateCcw, Plus, Timer, Volume2 
+  Play, Pause, RotateCcw, Plus, Timer, Volume2, Youtube
 } from 'lucide-react'
 import confetti from 'canvas-confetti'
 import { logWorkoutCompletion, getUserStats } from '../../utils/userStats'
@@ -38,6 +38,29 @@ const playSuccessSound = () => {
   } catch (e) {
     console.log('Audio Context muted due to gesture restrictions', e)
   }
+}
+
+// Extract YouTube video ID from any YouTube URL format
+const getYoutubeId = (url) => {
+  if (!url) return null
+  try {
+    const parsed = new URL(url)
+    if (parsed.hostname.includes('youtu.be')) {
+      return parsed.pathname.slice(1).split('?')[0]
+    }
+    if (parsed.hostname.includes('youtube.com')) {
+      // /shorts/ID  or  ?v=ID  or  /embed/ID
+      const parts = parsed.pathname.split('/')
+      const shortsIdx = parts.indexOf('shorts')
+      const embedIdx = parts.indexOf('embed')
+      if (shortsIdx !== -1) return parts[shortsIdx + 1]
+      if (embedIdx !== -1) return parts[embedIdx + 1]
+      return parsed.searchParams.get('v')
+    }
+  } catch {
+    return null
+  }
+  return null
 }
 
 // Tailored tips database by exercise keywords
@@ -173,7 +196,8 @@ export function WorkoutDay() {
         rir: ex.rir,
         dotColor,
         tip,
-        guide
+        guide,
+        youtubeUrl: ex.youtubeUrl || ''
       }
     })
   }
@@ -308,6 +332,12 @@ export function WorkoutDay() {
                     <span className={`w-2.5 h-2.5 rounded-full ${ex.dotColor}`} />
                     <span>{ex.rir || ex.difficulty}</span>
                   </div>
+
+                  {ex.youtubeUrl && getYoutubeId(ex.youtubeUrl) && (
+                    <span className="flex items-center gap-0.5 text-[10px] font-bold text-[#FF0000] bg-[#FF0000]/10 border border-[#FF0000]/20 rounded px-1.5 py-0.5 uppercase">
+                      <Youtube size={9} /> Video
+                    </span>
+                  )}
                   
                   <button 
                     onClick={() => toggleExpand(ex.id)}
@@ -321,6 +351,31 @@ export function WorkoutDay() {
               {/* Expandable Guide Body */}
               {isExpanded && (
                 <div className="border-t border-[#1F1F1F] mt-4 pt-4 space-y-3">
+                  {/* YouTube Embedded Player */}
+                  {ex.youtubeUrl && (() => {
+                    const videoId = getYoutubeId(ex.youtubeUrl)
+                    return videoId ? (
+                      <div className="rounded-xl overflow-hidden border border-[#FF0000]/20 bg-black">
+                        <div className="flex items-center gap-1.5 px-3 py-1.5 bg-[#FF0000]/5 border-b border-[#FF0000]/10">
+                          <Youtube size={12} className="text-[#FF0000]" />
+                          <span className="text-[10px] font-bold text-[#FF0000] uppercase tracking-wider">
+                            {language === 'ar' ? 'فيديو توضيحي للتمرين' : 'Exercise Demo Video'}
+                          </span>
+                        </div>
+                        <div className="relative w-full" style={{ paddingBottom: '56.25%' }}>
+                          <iframe
+                            src={`https://www.youtube-nocookie.com/embed/${videoId}?rel=0&modestbranding=1`}
+                            title={ex.name}
+                            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                            allowFullScreen
+                            loading="lazy"
+                            className="absolute inset-0 w-full h-full border-0"
+                          />
+                        </div>
+                      </div>
+                    ) : null
+                  })()}
+
                   <div className="bg-[#0A0A0A] border border-[#1F1F1F] rounded-lg p-3">
                     <span className="text-[10px] text-[#666666] font-bold uppercase tracking-wider block mb-1">
                       {language === 'ar' ? 'تعليمات أداء التمرين' : 'Exercise Instructions'}

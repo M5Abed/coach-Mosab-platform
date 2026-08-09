@@ -21,7 +21,8 @@ import {
   X,
   Send,
   FileText,
-  AlertTriangle
+  AlertTriangle,
+  Youtube
 } from 'lucide-react'
 
 export function ManagePlans() {
@@ -53,9 +54,9 @@ export function ManagePlans() {
   const [trainingDays, setTrainingDays] = useState(3)
   const [activeDay, setActiveDay] = useState(0) // which day tab is active
   const [newDays, setNewDays] = useState([
-    { label: 'Day 1', exercises: [{ name: '', sets: 3, reps: '8:10', rir: '1', rest: '90s' }] },
-    { label: 'Day 2', exercises: [{ name: '', sets: 3, reps: '8:10', rir: '1', rest: '90s' }] },
-    { label: 'Day 3', exercises: [{ name: '', sets: 3, reps: '8:10', rir: '1', rest: '90s' }] },
+    { label: 'Day 1', exercises: [{ name: '', sets: 3, reps: '8:10', rir: '1', rest: '90s', youtubeUrl: '' }] },
+    { label: 'Day 2', exercises: [{ name: '', sets: 3, reps: '8:10', rir: '1', rest: '90s', youtubeUrl: '' }] },
+    { label: 'Day 3', exercises: [{ name: '', sets: 3, reps: '8:10', rir: '1', rest: '90s', youtubeUrl: '' }] },
   ])
   // Structured nutrition fields
   const [newCalories, setNewCalories] = useState(2200)
@@ -84,7 +85,7 @@ export function ManagePlans() {
   }
 
   // Day-scoped exercise helpers
-  const addExercise = () => setNewDays(prev => prev.map((d, i) => i === activeDay ? { ...d, exercises: [...d.exercises, { name: '', sets: 3, reps: '8:10', rir: '1', rest: '90s' }] } : d))
+  const addExercise = () => setNewDays(prev => prev.map((d, i) => i === activeDay ? { ...d, exercises: [...d.exercises, { name: '', sets: 3, reps: '8:10', rir: '1', rest: '90s', youtubeUrl: '' }] } : d))
   const removeExercise = (idx) => setNewDays(prev => prev.map((d, i) => i === activeDay ? { ...d, exercises: d.exercises.filter((_, ei) => ei !== idx) } : d))
   const updateExercise = (idx, field, value) => setNewDays(prev => prev.map((d, i) => i === activeDay ? { ...d, exercises: d.exercises.map((ex, ei) => ei === idx ? { ...ex, [field]: value } : ex) } : d))
   const updateDayLabel = (dayIdx, label) => setNewDays(prev => prev.map((d, i) => i === dayIdx ? { ...d, label } : d))
@@ -225,11 +226,12 @@ export function ManagePlans() {
             sets: Number(ex.sets) || 3,
             reps: ex.reps || '10',
             rest: ex.rest || '90s',
-            rir: ex.rir && ex.rir !== '—' ? `${ex.rir} RIR` : undefined,
+            rir: ex.rir && ex.rir !== '\u2014' ? `${ex.rir} RIR` : undefined,
             difficulty: ex.rir === '0' ? 'Hard' : ex.rir === '1' ? 'Medium' : 'Easy',
             dotColor: ex.rir === '0' ? 'bg-[#FF3A2D]' : ex.rir === '1' ? 'bg-[#FF8C00]' : 'bg-[#34D399]',
             guide: `RIR: ${ex.rir}. Keep form stable.`,
-            tip: 'Maintain control and focus on the target muscles.'
+            tip: 'Maintain control and focus on the target muscles.',
+            youtubeUrl: ex.youtubeUrl || ''
           }))
           return { label: day.label, exercises }
         })
@@ -265,9 +267,9 @@ export function ManagePlans() {
       setNewTitle(''); setNewDescription('')
       setTrainingDays(3); setActiveDay(0)
       setNewDays([
-        { label: 'Day 1', exercises: [{ name: '', sets: 3, reps: '8:10', rir: '1', rest: '90s' }] },
-        { label: 'Day 2', exercises: [{ name: '', sets: 3, reps: '8:10', rir: '1', rest: '90s' }] },
-        { label: 'Day 3', exercises: [{ name: '', sets: 3, reps: '8:10', rir: '1', rest: '90s' }] },
+        { label: 'Day 1', exercises: [{ name: '', sets: 3, reps: '8:10', rir: '1', rest: '90s', youtubeUrl: '' }] },
+        { label: 'Day 2', exercises: [{ name: '', sets: 3, reps: '8:10', rir: '1', rest: '90s', youtubeUrl: '' }] },
+        { label: 'Day 3', exercises: [{ name: '', sets: 3, reps: '8:10', rir: '1', rest: '90s', youtubeUrl: '' }] },
       ])
       setNewMeals([{ name: 'Breakfast', time: '7:00 AM', foods: [{ name: '', qty: '' }] }])
       setNewCalories(2200); setNewProtein(160); setNewCarbs(220); setNewFat(65)
@@ -907,7 +909,7 @@ export function ManagePlans() {
                           <div>
                             <span className="text-[8px] text-[#555] font-bold uppercase block mb-0.5">RIR</span>
                             <select value={ex.rir} onChange={(e) => updateExercise(idx, 'rir', e.target.value)} className="w-full bg-[#111] border border-[#1F1F1F] rounded-lg py-1 px-2 text-[10px] text-[#F5F5F5] outline-none cursor-pointer">
-                              {['0','1','2','3','—'].map(r => <option key={r} value={r}>{r === '0' ? '0 (Failure)' : r === '—' ? 'N/A' : r}</option>)}
+                              {['0','1','2','3','\u2014'].map(r => <option key={r} value={r}>{r === '0' ? '0 (Failure)' : r === '\u2014' ? 'N/A' : r}</option>)}
                             </select>
                           </div>
                           <div>
@@ -916,6 +918,16 @@ export function ManagePlans() {
                               {['30s','45s','60s','90s','120s','150s','180s'].map(r => <option key={r} value={r}>{r}</option>)}
                             </select>
                           </div>
+                        </div>
+                        <div className="flex items-center gap-1.5">
+                          <Youtube size={10} className="text-[#FF0000] shrink-0" />
+                          <input
+                            type="url"
+                            value={ex.youtubeUrl || ''}
+                            onChange={(e) => updateExercise(idx, 'youtubeUrl', e.target.value)}
+                            placeholder="YouTube demo link (optional)"
+                            className="flex-1 bg-transparent border-b border-[#1F1F1F] focus:border-[#FF0000]/30 text-[10px] text-[#888] py-0.5 outline-none placeholder-[#444]"
+                          />
                         </div>
                       </div>
                     ))}

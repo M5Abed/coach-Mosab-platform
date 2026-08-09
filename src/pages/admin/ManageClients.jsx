@@ -10,6 +10,13 @@ import { Modal } from '../../components/ui/Modal'
 import { DndContext, closestCenter, PointerSensor, useSensor, useSensors } from '@dnd-kit/core'
 import { SortableContext, verticalListSortingStrategy, useSortable, arrayMove } from '@dnd-kit/sortable'
 
+// Inline YouTube icon (lucide-react version-safe)
+const YtIcon = ({ size = 16, className = '' }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor" className={className}>
+    <path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/>
+  </svg>
+)
+
 
 const activityLabels = {
   desk: 'Desk / Low Activity',
@@ -104,9 +111,9 @@ const loadWorkoutPlanForEditing = (workoutPlanRaw) => {
       title: 'Custom Workout Plan',
       trainingDays: 3,
       days: [
-        { label: 'Day 1', exercises: [{ id: generateUniqueId(), name: '', sets: 3, reps: '8:10', rir: '1', rest: '90s' }] },
-        { label: 'Day 2', exercises: [{ id: generateUniqueId(), name: '', sets: 3, reps: '8:10', rir: '1', rest: '90s' }] },
-        { label: 'Day 3', exercises: [{ id: generateUniqueId(), name: '', sets: 3, reps: '8:10', rir: '1', rest: '90s' }] },
+        { label: 'Day 1', exercises: [{ id: generateUniqueId(), name: '', sets: 3, reps: '8:10', rir: '1', rest: '90s', youtubeUrl: '' }] },
+        { label: 'Day 2', exercises: [{ id: generateUniqueId(), name: '', sets: 3, reps: '8:10', rir: '1', rest: '90s', youtubeUrl: '' }] },
+        { label: 'Day 3', exercises: [{ id: generateUniqueId(), name: '', sets: 3, reps: '8:10', rir: '1', rest: '90s', youtubeUrl: '' }] },
       ]
     }
   }
@@ -123,8 +130,9 @@ const loadWorkoutPlanForEditing = (workoutPlanRaw) => {
           name: ex.name || '',
           sets: ex.sets || 3,
           reps: ex.reps || '8:10',
-          rir: ex.rir ? String(ex.rir).replace(/\D/g, '') : '1', // extract digits safely
-          rest: ex.rest || '90s'
+          rir: ex.rir ? String(ex.rir).replace(/\D/g, '') : '1',
+          rest: ex.rest || '90s',
+          youtubeUrl: ex.youtubeUrl || ''
         })) || []
       }))
     }
@@ -143,12 +151,13 @@ const loadWorkoutPlanForEditing = (workoutPlanRaw) => {
         sets: ex.sets || 3,
         reps: ex.reps || '8:10',
         rir: ex.rir ? String(ex.rir).replace(/\D/g, '') : '1',
-        rest: ex.rest || '90s'
+        rest: ex.rest || '90s',
+        youtubeUrl: ex.youtubeUrl || ''
       }))
 
     return {
       label: `Day ${dayNum}`,
-      exercises: dayExercises.length > 0 ? dayExercises : [{ id: generateUniqueId(), name: '', sets: 3, reps: '8:10', rir: '1', rest: '90s' }]
+      exercises: dayExercises.length > 0 ? dayExercises : [{ id: generateUniqueId(), name: '', sets: 3, reps: '8:10', rir: '1', rest: '90s', youtubeUrl: '' }]
     }
   })
 
@@ -271,7 +280,7 @@ function SortableExerciseRow({ ex, index, onUpdate, onRemove }) {
             onChange={(e) => onUpdate(index, 'rir', e.target.value)}
             className="w-full bg-[#161616] border border-[#1F1F1F] rounded-lg px-2 py-1 text-xs text-[#F5F5F5] outline-none"
           >
-            {['0', '1', '2', '3', '—'].map(v => <option key={v} value={v}>{v === '—' ? '—' : `${v} RIR`}</option>)}
+            {['0', '1', '2', '3', '\u2014'].map(v => <option key={v} value={v}>{v === '\u2014' ? '\u2014' : `${v} RIR`}</option>)}
           </select>
         </div>
         <div className="space-y-1">
@@ -284,6 +293,18 @@ function SortableExerciseRow({ ex, index, onUpdate, onRemove }) {
             {['30s', '45s', '60s', '90s', '120s', '150s', '180s'].map(v => <option key={v} value={v}>{v}</option>)}
           </select>
         </div>
+      </div>
+
+      {/* YouTube Demo Link */}
+      <div className="flex items-center gap-2">
+        <YtIcon size={11} className="text-[#FF0000] shrink-0" />
+        <input
+          type="url"
+          value={ex.youtubeUrl || ''}
+          onChange={(e) => onUpdate(index, 'youtubeUrl', e.target.value)}
+          placeholder="YouTube demo link (optional)"
+          className="flex-1 bg-transparent border-b border-[#1F1F1F] focus:border-[#FF0000]/30 text-[10px] text-[#888] py-0.5 outline-none placeholder-[#444]"
+        />
       </div>
     </div>
   )
@@ -308,9 +329,9 @@ export function ManageClients() {
   const [editTrainingDays, setEditTrainingDays] = useState(3)
   const [editActiveDay, setEditActiveDay] = useState(0)
   const [editDays, setEditDays] = useState([
-    { label: 'Day 1', exercises: [{ id: 'init-1', name: '', sets: 3, reps: '8:10', rir: '1', rest: '90s' }] },
-    { label: 'Day 2', exercises: [{ id: 'init-2', name: '', sets: 3, reps: '8:10', rir: '1', rest: '90s' }] },
-    { label: 'Day 3', exercises: [{ id: 'init-3', name: '', sets: 3, reps: '8:10', rir: '1', rest: '90s' }] },
+    { label: 'Day 1', exercises: [{ id: 'init-1', name: '', sets: 3, reps: '8:10', rir: '1', rest: '90s', youtubeUrl: '' }] },
+    { label: 'Day 2', exercises: [{ id: 'init-2', name: '', sets: 3, reps: '8:10', rir: '1', rest: '90s', youtubeUrl: '' }] },
+    { label: 'Day 3', exercises: [{ id: 'init-3', name: '', sets: 3, reps: '8:10', rir: '1', rest: '90s', youtubeUrl: '' }] },
   ])
   const [editCalories, setEditCalories] = useState(2200)
   const [editProtein, setEditProtein] = useState(160)
@@ -455,7 +476,7 @@ export function ManageClients() {
           ...prev,
           ...Array.from({ length: n - prev.length }, (_, i) => ({
             label: `Day ${prev.length + i + 1}`,
-            exercises: [{ id: generateUniqueId(), name: '', sets: 3, reps: '8:10', rir: '1', rest: '90s' }]
+            exercises: [{ id: generateUniqueId(), name: '', sets: 3, reps: '8:10', rir: '1', rest: '90s', youtubeUrl: '' }]
           }))
         ]
       }
@@ -464,7 +485,7 @@ export function ManageClients() {
     if (editActiveDay >= n) setEditActiveDay(n - 1)
   }
 
-  const addEditExercise = () => setEditDays(prev => prev.map((d, i) => i === editActiveDay ? { ...d, exercises: [...d.exercises, { id: generateUniqueId(), name: '', sets: 3, reps: '8:10', rir: '1', rest: '90s' }] } : d))
+  const addEditExercise = () => setEditDays(prev => prev.map((d, i) => i === editActiveDay ? { ...d, exercises: [...d.exercises, { id: generateUniqueId(), name: '', sets: 3, reps: '8:10', rir: '1', rest: '90s', youtubeUrl: '' }] } : d))
   const removeEditExercise = (idx) => setEditDays(prev => prev.map((d, i) => i === editActiveDay ? { ...d, exercises: d.exercises.filter((_, ei) => ei !== idx) } : d))
   const updateEditExercise = (idx, field, value) => setEditDays(prev => prev.map((d, i) => i === editActiveDay ? { ...d, exercises: d.exercises.map((ex, ei) => ei === idx ? { ...ex, [field]: value } : ex) } : d))
   const updateEditDayLabel = (dayIdx, label) => setEditDays(prev => prev.map((d, i) => i === dayIdx ? { ...d, label } : d))
@@ -535,11 +556,12 @@ export function ManageClients() {
           sets: Number(ex.sets) || 3,
           reps: ex.reps || '10',
           rest: ex.rest || '90s',
-          rir: ex.rir && ex.rir !== '—' ? `${ex.rir} RIR` : undefined,
+          rir: ex.rir && ex.rir !== '\u2014' ? `${ex.rir} RIR` : undefined,
           difficulty: ex.rir === '0' ? 'Hard' : ex.rir === '1' ? 'Medium' : 'Easy',
           dotColor: ex.rir === '0' ? 'bg-[#FF3A2D]' : ex.rir === '1' ? 'bg-[#FF8C00]' : 'bg-[#34D399]',
           guide: `RIR: ${ex.rir}. Keep form stable.`,
-          tip: 'Maintain control and focus on the target muscles.'
+          tip: 'Maintain control and focus on the target muscles.',
+          youtubeUrl: ex.youtubeUrl || ''
         }))
         return { label: day.label, exercises }
       })

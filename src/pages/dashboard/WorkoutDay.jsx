@@ -9,8 +9,15 @@ import { useLanguageStore } from '../../store/languageStore'
 import { translations } from '../../utils/translations'
 import { 
   ArrowLeft, Check, ChevronDown, ChevronUp, Flame, 
-  Play, Pause, RotateCcw, Plus, Timer, Volume2, Youtube
+  Play, Pause, RotateCcw, Plus, Timer, Volume2
 } from 'lucide-react'
+
+// Inline YouTube icon (lucide-react version-safe)
+const YtIcon = ({ size = 16, className = '' }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor" className={className}>
+    <path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/>
+  </svg>
+)
 import confetti from 'canvas-confetti'
 import { logWorkoutCompletion, getUserStats } from '../../utils/userStats'
 import { parseWorkoutPlan } from '../../utils/planParser'
@@ -335,7 +342,7 @@ export function WorkoutDay() {
 
                   {ex.youtubeUrl && getYoutubeId(ex.youtubeUrl) && (
                     <span className="flex items-center gap-0.5 text-[10px] font-bold text-[#FF0000] bg-[#FF0000]/10 border border-[#FF0000]/20 rounded px-1.5 py-0.5 uppercase">
-                      <Youtube size={9} /> Video
+                      <YtIcon size={9} /> Video
                     </span>
                   )}
                   
@@ -357,7 +364,7 @@ export function WorkoutDay() {
                     return videoId ? (
                       <div className="rounded-xl overflow-hidden border border-[#FF0000]/20 bg-black">
                         <div className="flex items-center gap-1.5 px-3 py-1.5 bg-[#FF0000]/5 border-b border-[#FF0000]/10">
-                          <Youtube size={12} className="text-[#FF0000]" />
+                          <YtIcon size={12} className="text-[#FF0000]" />
                           <span className="text-[10px] font-bold text-[#FF0000] uppercase tracking-wider">
                             {language === 'ar' ? 'فيديو توضيحي للتمرين' : 'Exercise Demo Video'}
                           </span>

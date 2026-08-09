@@ -4,7 +4,14 @@ import { Button } from '../../components/ui/Button'
 import { Badge } from '../../components/ui/Badge'
 import { supabase } from '../../lib/supabase'
 import { toast } from '../../store/toastStore'
-import { Plus, Trash2, GripVertical, Save, Dumbbell, RefreshCw, Youtube } from 'lucide-react'
+import { Plus, Trash2, GripVertical, Save, Dumbbell, RefreshCw } from 'lucide-react'
+
+// Inline YouTube icon (lucide-react version-safe)
+const YtIcon = ({ size = 16, className = '' }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor" className={className}>
+    <path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/>
+  </svg>
+)
 
 export function WorkoutBuilder() {
   const [clientsList, setClientsList] = useState([])
@@ -289,7 +296,7 @@ export function WorkoutBuilder() {
                               <span>Rest: {ex.rest}</span>
                               {ex.youtubeUrl && (
                                 <span className="flex items-center gap-0.5 text-[#FF0000]">
-                                  <Youtube size={10} /> Video
+                                  <YtIcon size={10} /> Video
                                 </span>
                               )}
                             </div>
@@ -412,7 +419,7 @@ export function WorkoutBuilder() {
 
               <div className="space-y-1.5">
                 <label className="text-xs font-bold text-[#666666] uppercase tracking-wider block flex items-center gap-1.5">
-                  <Youtube size={12} className="text-[#FF0000]" /> YouTube Demo Link <span className="text-[#444] normal-case font-normal">(optional)</span>
+                  <YtIcon size={12} className="text-[#FF0000]" /> YouTube Demo Link <span className="text-[#444] normal-case font-normal">(optional)</span>
                 </label>
                 <input
                   type="url"

@@ -9,6 +9,8 @@ import { Eye, Edit3, Trash2, Search, Plus, Save, Dumbbell, Apple, AlertTriangle,
 import { Modal } from '../../components/ui/Modal'
 import { DndContext, closestCenter, PointerSensor, useSensor, useSensors } from '@dnd-kit/core'
 import { SortableContext, verticalListSortingStrategy, useSortable, arrayMove } from '@dnd-kit/sortable'
+import { useNavigate } from 'react-router-dom'
+import { usePreviewStore } from '../../store/previewStore'
 
 // Inline YouTube icon (lucide-react version-safe)
 const YtIcon = ({ size = 16, className = '' }) => (
@@ -311,6 +313,8 @@ function SortableExerciseRow({ ex, index, onUpdate, onRemove }) {
 }
 
 export function ManageClients() {
+  const navigate = useNavigate()
+  const { startPreview } = usePreviewStore()
   const [clients, setClients] = useState([])
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState('')
@@ -351,6 +355,11 @@ export function ManageClients() {
 
   // Delete confirmation modal state
   const [deleteConfirm, setDeleteConfirm] = useState(null) // { id, name } | null
+
+  // Copy Plan modal state
+  const [showCopyPlanModal, setShowCopyPlanModal] = useState(false)
+  const [copyPlanSearch, setCopyPlanSearch] = useState('')
+  const [copyingPlanTo, setCopyingPlanTo] = useState(null) // client id being copied to
 
   const fetchClients = useCallback(async () => {
     setLoading(true)
@@ -685,6 +694,40 @@ export function ManageClients() {
     setDeleteConfirm({ id, name })
   }
 
+  const handleCopyPlanTo = async (targetClient) => {
+    if (!selectedClient || !targetClient) return
+    if (targetClient.id === selectedClient.id) {
+      toast.error('Cannot copy a plan to the same client.')
+      return
+    }
+    setCopyingPlanTo(targetClient.id)
+    try {
+      const { error } = await supabase
+        .from('profiles')
+        .update({
+          workout_plan: selectedClient.workout_plan || null,
+          nutrition_plan: selectedClient.nutrition_plan || null
+        })
+        .eq('id', targetClient.id)
+
+      if (error) throw error
+
+      setClients(prev => prev.map(c =>
+        c.id === targetClient.id
+          ? { ...c, workout_plan: selectedClient.workout_plan, nutrition_plan: selectedClient.nutrition_plan }
+          : c
+      ))
+
+      toast.success(`✅ Plans copied to ${targetClient.full_name || targetClient.email}!`)
+      setShowCopyPlanModal(false)
+      setCopyPlanSearch('')
+    } catch (err) {
+      toast.error('Failed to copy plan: ' + err.message)
+    } finally {
+      setCopyingPlanTo(null)
+    }
+  }
+
   const confirmDeleteClient = async () => {
     if (!deleteConfirm) return
     const { id, name } = deleteConfirm
@@ -962,6 +1005,17 @@ export function ManageClients() {
                       className="flex-1 font-bebas uppercase tracking-wider text-xs py-2"
                     >
                       <Edit3 size={14} className="mr-1.5" /> Edit Profile
+                    </Button>
+                    <Button
+                      onClick={() => {
+                        startPreview(selectedClient)
+                        navigate('/dashboard')
+                      }}
+                      variant="outline"
+                      className="flex-1 font-bebas uppercase tracking-wider text-xs py-2 text-[#E8FF00] border-[#E8FF00]/30 hover:bg-[#E8FF00]/10"
+                      title="See exactly what this client sees"
+                    >
+                      <Eye size={14} className="mr-1" /> Preview View
                     </Button>
                     <Button 
                       onClick={() => handleDeleteClient(selectedClient.id, selectedClient.full_name)}
@@ -1301,12 +1355,25 @@ export function ManageClients() {
                     These plans override standard templates in their client portal
                   </span>
                 </div>
-                <Button 
-                  onClick={handleOpenEditPlanModal} 
-                  className="font-bebas uppercase tracking-wider text-xs py-1.5 px-4 bg-[#E8FF00] hover:bg-[#E8FF00]/90 text-black flex items-center gap-1"
-                >
-                  <Edit3 size={14} /> Edit Plans
-                </Button>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => { setShowCopyPlanModal(true); setCopyPlanSearch('') }}
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-[#1F1F1F] bg-[#0A0A0A] text-[#666666] hover:text-[#E8FF00] hover:border-[#E8FF00]/30 transition-colors text-[10px] font-bold uppercase tracking-wider cursor-pointer outline-none"
+                    title="Copy this client's plans to another client"
+                  >
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
+                      <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+                    </svg>
+                    Copy Plan
+                  </button>
+                  <Button 
+                    onClick={handleOpenEditPlanModal} 
+                    className="font-bebas uppercase tracking-wider text-xs py-1.5 px-4 bg-[#E8FF00] hover:bg-[#E8FF00]/90 text-black flex items-center gap-1"
+                  >
+                    <Edit3 size={14} /> Edit Plans
+                  </Button>
+                </div>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -1796,6 +1863,127 @@ export function ManageClients() {
         )}
       </div>
     </div>
+      {/* =============================================
+          COPY PLAN MODAL
+          ============================================= */}
+      {showCopyPlanModal && selectedClient && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 backdrop-blur-md bg-black/70 font-dmsans">
+          <div className="bg-[#111111] border border-[#1F1F1F] rounded-2xl w-full max-w-lg relative overflow-hidden animate-fade-in flex flex-col max-h-[85vh]">
+            
+            {/* Header */}
+            <div className="p-5 border-b border-[#1F1F1F] shrink-0">
+              <button
+                onClick={() => { setShowCopyPlanModal(false); setCopyPlanSearch('') }}
+                className="absolute top-4 right-4 text-[#666666] hover:text-white transition-colors cursor-pointer outline-none"
+              >
+                <X size={18} />
+              </button>
+
+              <span className="text-[10px] text-[#E8FF00] font-bold uppercase tracking-wider block mb-1">Copy Plans From</span>
+              <h3 className="font-bebas text-2xl text-[#F5F5F5] tracking-wide uppercase">
+                {selectedClient.full_name || 'This Client'}
+              </h3>
+
+              {/* Plan summary badges */}
+              <div className="flex flex-wrap gap-2 mt-2">
+                {selectedClient.workout_plan && (
+                  <span className="flex items-center gap-1 text-[9px] font-bold text-[#E8FF00] bg-[#E8FF00]/10 border border-[#E8FF00]/20 rounded px-2 py-0.5 uppercase">
+                    <Dumbbell size={9} />
+                    Workout Plan · {selectedClient.workout_plan.daysPerWeek || selectedClient.workout_plan.days?.length || 0} days
+                  </span>
+                )}
+                {selectedClient.nutrition_plan && (
+                  <span className="flex items-center gap-1 text-[9px] font-bold text-[#4DA6FF] bg-[#4DA6FF]/10 border border-[#4DA6FF]/20 rounded px-2 py-0.5 uppercase">
+                    <Apple size={9} />
+                    Nutrition Plan · {selectedClient.nutrition_plan.meals?.length || 0} meals
+                  </span>
+                )}
+                {!selectedClient.workout_plan && !selectedClient.nutrition_plan && (
+                  <span className="text-[10px] text-[#FF3A2D] font-bold uppercase">⚠ This client has no plans to copy</span>
+                )}
+              </div>
+            </div>
+
+            {/* Search */}
+            <div className="px-5 py-3 border-b border-[#1F1F1F] shrink-0">
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-[#666666]" size={14} />
+                <input
+                  type="text"
+                  placeholder="Search clients by name or email..."
+                  value={copyPlanSearch}
+                  onChange={(e) => setCopyPlanSearch(e.target.value)}
+                  autoFocus
+                  className="w-full bg-[#0A0A0A] border border-[#1F1F1F] rounded-xl py-2 pl-9 pr-4 text-xs text-[#F5F5F5] placeholder-[#555] focus:border-[#E8FF00]/40 outline-none transition-colors"
+                />
+              </div>
+            </div>
+
+            {/* Client list */}
+            <div className="overflow-y-auto flex-1 p-3 space-y-2">
+              {clients
+                .filter(c => c.id !== selectedClient.id)
+                .filter(c =>
+                  copyPlanSearch === '' ||
+                  (c.full_name || '').toLowerCase().includes(copyPlanSearch.toLowerCase()) ||
+                  (c.email || '').toLowerCase().includes(copyPlanSearch.toLowerCase())
+                )
+                .map(c => (
+                  <div
+                    key={c.id}
+                    className="flex items-center justify-between gap-3 bg-[#0A0A0A] border border-[#1F1F1F] rounded-xl px-4 py-3 hover:border-[#E8FF00]/20 transition-colors"
+                  >
+                    <div className="min-w-0">
+                      <p className="text-xs font-bold text-[#F5F5F5] truncate">{c.full_name || 'Unnamed Client'}</p>
+                      <p className="text-[10px] text-[#555] font-semibold truncate">{c.email}</p>
+                      <div className="flex gap-1.5 mt-1">
+                        <Badge variant={c.subscription_status}>{c.subscription_status}</Badge>
+                        {c.workout_plan && (
+                          <span className="text-[8px] font-bold text-[#E8FF00] bg-[#E8FF00]/5 border border-[#E8FF00]/15 rounded px-1.5 uppercase">Has Plan</span>
+                        )}
+                      </div>
+                    </div>
+
+                    <button
+                      onClick={() => handleCopyPlanTo(c)}
+                      disabled={copyingPlanTo === c.id || !selectedClient.workout_plan && !selectedClient.nutrition_plan}
+                      className="shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#E8FF00] hover:bg-[#d4eb00] disabled:opacity-40 disabled:cursor-not-allowed text-black text-[10px] font-bold uppercase tracking-wider transition-colors cursor-pointer outline-none"
+                    >
+                      {copyingPlanTo === c.id ? (
+                        <RefreshCw size={11} className="animate-spin" />
+                      ) : (
+                        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                          <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
+                          <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+                        </svg>
+                      )}
+                      {copyingPlanTo === c.id ? 'Copying...' : 'Copy Here'}
+                    </button>
+                  </div>
+                ))
+              }
+
+              {clients.filter(c => c.id !== selectedClient.id).length === 0 && (
+                <p className="text-center text-xs text-[#444] font-bold uppercase py-8">No other clients found.</p>
+              )}
+              {clients.filter(c => c.id !== selectedClient.id).filter(c =>
+                copyPlanSearch === '' ||
+                (c.full_name || '').toLowerCase().includes(copyPlanSearch.toLowerCase()) ||
+                (c.email || '').toLowerCase().includes(copyPlanSearch.toLowerCase())
+              ).length === 0 && copyPlanSearch !== '' && (
+                <p className="text-center text-xs text-[#444] font-bold uppercase py-8">No clients match "{copyPlanSearch}".</p>
+              )}
+            </div>
+
+            {/* Footer note */}
+            <div className="px-5 py-3 border-t border-[#1F1F1F] shrink-0">
+              <p className="text-[9px] text-[#444] font-semibold uppercase tracking-wider">
+                ⚠ This will overwrite the target client's existing workout &amp; nutrition plans.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
   )
 }
 

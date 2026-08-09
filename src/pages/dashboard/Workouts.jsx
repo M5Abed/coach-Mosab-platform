@@ -4,6 +4,7 @@ import { Card } from '../../components/ui/Card'
 import { Button } from '../../components/ui/Button'
 import { Badge } from '../../components/ui/Badge'
 import { useAuthStore } from '../../store/authStore'
+import { useEffectiveUser } from '../../hooks/useEffectiveUser'
 import { Dumbbell, Calendar, Clock, Zap, Target, GripVertical, Activity, Play } from 'lucide-react'
 import { parseWorkoutPlan } from '../../utils/planParser'
 
@@ -97,7 +98,7 @@ function ExerciseCard({ exercise, index }) {
 /* ══ Main Workouts Page ═══════════════════════════════════════ */
 export function Workouts() {
   const navigate = useNavigate()
-  const user = useAuthStore((state) => state.user)
+  const user = useEffectiveUser()
   const rawPlan = user?.workout_plan
   const plan = useMemo(() => parseWorkoutPlan(rawPlan), [rawPlan])
 

@@ -1,17 +1,20 @@
 import React from 'react'
-import { Navigate, Outlet, Link } from 'react-router-dom'
+import { Navigate, Outlet, Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
 import { Sidebar } from '../components/layout/Sidebar'
 import { TopBar } from '../components/layout/TopBar'
 import { MobileNav } from '../components/layout/MobileNav'
 import { Skeleton } from '../components/ui/Skeleton'
 import { useLanguageStore } from '../store/languageStore'
-import { Lock } from 'lucide-react'
+import { Lock, Eye, X } from 'lucide-react'
 import { ErrorBoundary } from '../components/ui/ErrorBoundary'
+import { usePreviewStore } from '../store/previewStore'
 
 export function PrivateRoute({ requireAdmin = false }) {
   const { isAuthenticated, isAdmin, initialized, loading, user } = useAuth()
   const { language } = useLanguageStore()
+  const { previewClient, exitPreview } = usePreviewStore()
+  const navigate = useNavigate()
 
   if (!initialized || (loading && !user)) {
     return (
@@ -77,6 +80,29 @@ export function PrivateRoute({ requireAdmin = false }) {
             >
               {language === 'ar' ? "إعادة إرسال الدفع" : "Resubmit Payment"}
             </Link>
+          </div>
+        )}
+
+        {/* Preview Mode Banner — visible only to admin/coach in client preview */}
+        {previewClient && isAdmin && (
+          <div className="bg-[#0A0A00] border-b-2 border-[#E8FF00] px-4 py-2.5 flex items-center justify-between gap-3 select-none z-50">
+            <div className="flex items-center gap-2 min-w-0">
+              <div className="w-6 h-6 rounded-full bg-[#E8FF00]/20 border border-[#E8FF00]/40 flex items-center justify-center shrink-0">
+                <Eye size={12} className="text-[#E8FF00]" />
+              </div>
+              <div className="min-w-0">
+                <span className="text-[9px] font-bold text-[#E8FF00] uppercase tracking-widest block">Preview Mode</span>
+                <span className="text-xs font-bold text-[#F5F5F5] truncate block">
+                  Viewing as: {previewClient.full_name || previewClient.email}
+                </span>
+              </div>
+            </div>
+            <button
+              onClick={() => { exitPreview(); navigate('/admin/clients') }}
+              className="shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#E8FF00] hover:bg-[#d4eb00] text-black text-[10px] font-bold uppercase tracking-wider transition-colors cursor-pointer outline-none"
+            >
+              <X size={11} /> Exit Preview
+            </button>
           </div>
         )}
 

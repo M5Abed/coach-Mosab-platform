@@ -2,6 +2,7 @@ import React, { useMemo, useState, useEffect } from 'react'
 import { Card } from '../../components/ui/Card'
 import { Badge } from '../../components/ui/Badge'
 import { useAuthStore } from '../../store/authStore'
+import { useEffectiveUser } from '../../hooks/useEffectiveUser'
 import { useLanguageStore } from '../../store/languageStore'
 import { supabase } from '../../lib/supabase'
 import { Apple, Flame, Beef, Wheat, Droplets, Clock, UtensilsCrossed, Sparkles, ArrowLeftRight } from 'lucide-react'
@@ -83,7 +84,7 @@ function MealCard({ meal, index, language }) {
 /* ══ Main Nutrition Page ══════════════════════════════════════ */
 export function Nutrition() {
   const { language } = useLanguageStore()
-  const user = useAuthStore((state) => state.user)
+  const user = useEffectiveUser()
   const rawPlan = user?.nutrition_plan
   const plan = useMemo(() => parseNutritionPlan(rawPlan), [rawPlan])
 

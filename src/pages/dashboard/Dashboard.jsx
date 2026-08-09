@@ -1,6 +1,6 @@
 import React, { useMemo, useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { useAuthStore } from '../../store/authStore'
+import { useEffectiveUser } from '../../hooks/useEffectiveUser'
 import { useLanguageStore } from '../../store/languageStore'
 import { translations } from '../../utils/translations'
 import { Card } from '../../components/ui/Card'
@@ -13,7 +13,7 @@ import { supabase } from '../../lib/supabase'
 
 export function Dashboard() {
   const navigate = useNavigate()
-  const user = useAuthStore((state) => state.user)
+  const user = useEffectiveUser()
   const { language } = useLanguageStore()
   const t = translations[language]
 

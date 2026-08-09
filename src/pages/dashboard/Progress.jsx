@@ -5,6 +5,7 @@ import { Badge } from '../../components/ui/Badge'
 import { Modal } from '../../components/ui/Modal'
 import { toast } from '../../store/toastStore'
 import { useAuthStore } from '../../store/authStore'
+import { useEffectiveUser } from '../../hooks/useEffectiveUser'
 import { getUserStats } from '../../utils/userStats'
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
 import { ArrowUpRight, Flame, Plus, Scale, Dumbbell, Calendar, Upload, ZoomIn } from 'lucide-react'
@@ -13,7 +14,7 @@ export function Progress() {
   const [showCheckInModal, setShowCheckInModal] = useState(false)
   const [zoomedPhoto, setZoomedPhoto] = useState(null)
   
-  const user = useAuthStore((state) => state.user)
+  const user = useEffectiveUser()
   const stats = useMemo(() => getUserStats(user?.id), [user?.id])
 
   const checkInsKey = `coach_mosab_checkins_${user?.id}`

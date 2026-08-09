@@ -5,6 +5,7 @@ import { Button } from '../../components/ui/Button'
 import { Badge } from '../../components/ui/Badge'
 import { Modal } from '../../components/ui/Modal'
 import { useAuthStore } from '../../store/authStore'
+import { useEffectiveUser } from '../../hooks/useEffectiveUser'
 import { useLanguageStore } from '../../store/languageStore'
 import { translations } from '../../utils/translations'
 import { 
@@ -116,7 +117,7 @@ export function WorkoutDay() {
   const { language } = useLanguageStore()
   const t = translations[language]
 
-  const user = useAuthStore((state) => state.user)
+  const user = useEffectiveUser()
   const rawWorkoutPlan = user?.workout_plan
   const workoutPlan = useMemo(() => parseWorkoutPlan(rawWorkoutPlan), [rawWorkoutPlan])
 
@@ -341,9 +342,19 @@ export function WorkoutDay() {
                   </div>
 
                   {ex.youtubeUrl && getYoutubeId(ex.youtubeUrl) && (
-                    <span className="flex items-center gap-0.5 text-[10px] font-bold text-[#FF0000] bg-[#FF0000]/10 border border-[#FF0000]/20 rounded px-1.5 py-0.5 uppercase">
-                      <YtIcon size={9} /> Video
-                    </span>
+                    <button
+                      onClick={() => {
+                        if (!isExpanded) toggleExpand(ex.id)
+                        // Scroll to card after expand renders
+                        setTimeout(() => {
+                          document.getElementById(`video-${ex.id}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+                        }, 150)
+                      }}
+                      className="flex items-center gap-1 text-[10px] font-bold text-[#FF0000] bg-[#FF0000]/10 border border-[#FF0000]/25 hover:bg-[#FF0000]/20 rounded-lg px-2 py-1 uppercase tracking-wider transition-colors cursor-pointer outline-none"
+                    >
+                      <YtIcon size={10} />
+                      {language === 'ar' ? 'شاهد الشرح' : 'Watch Demo'}
+                    </button>
                   )}
                   
                   <button 
@@ -353,6 +364,7 @@ export function WorkoutDay() {
                     {isExpanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
                   </button>
                 </div>
+
               </div>
 
               {/* Expandable Guide Body */}
@@ -362,7 +374,7 @@ export function WorkoutDay() {
                   {ex.youtubeUrl && (() => {
                     const videoId = getYoutubeId(ex.youtubeUrl)
                     return videoId ? (
-                      <div className="rounded-xl overflow-hidden border border-[#FF0000]/20 bg-black">
+                      <div id={`video-${ex.id}`} className="rounded-xl overflow-hidden border border-[#FF0000]/20 bg-black">
                         <div className="flex items-center gap-1.5 px-3 py-1.5 bg-[#FF0000]/5 border-b border-[#FF0000]/10">
                           <YtIcon size={12} className="text-[#FF0000]" />
                           <span className="text-[10px] font-bold text-[#FF0000] uppercase tracking-wider">

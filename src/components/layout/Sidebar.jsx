@@ -1,6 +1,7 @@
 import React from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { useAuthStore } from '../../store/authStore'
+import { usePreviewStore } from '../../store/previewStore'
 import { useLanguageStore } from '../../store/languageStore'
 import { translations } from '../../utils/translations'
 import {
@@ -15,7 +16,9 @@ import {
   ClipboardList,
   ArrowLeftRight,
   Sparkles,
-  MessageSquare
+  MessageSquare,
+  Eye,
+  X
 } from 'lucide-react'
 import { Badge } from '../ui/Badge'
 import { LanguageSelector } from '../ui/LanguageSelector'
@@ -25,9 +28,13 @@ export function Sidebar() {
   const navigate = useNavigate()
   const user = useAuthStore((state) => state.user)
   const logout = useAuthStore((state) => state.logout)
+  const { previewClient, exitPreview } = usePreviewStore()
   const { language } = useLanguageStore()
   const t = translations[language]
 
+  // In preview mode, treat the view as a subscriber regardless of real role
+  const isPreview = !!previewClient
+  const isAdmin = !isPreview && user?.role === 'admin'
   const handleLogout = async () => {
     await logout()
     navigate('/login')
@@ -56,8 +63,10 @@ export function Sidebar() {
     { name: language === 'ar' ? "الإعدادات" : "Settings", path: '/dashboard/settings', icon: <Settings size={20} /> },
   ]
 
-  const isAdmin = user?.role === 'admin'
   const navLinks = isAdmin ? adminLinks : subscriberLinks
+
+  // Displayed user in the sidebar bottom section
+  const displayUser = isPreview ? previewClient : user
 
   const getFitnessBadgeText = (level) => {
     if (level === 'beginner') return language === 'ar' ? 'مبتدئ' : 'Beginner'
@@ -98,34 +107,52 @@ export function Sidebar() {
 
       {/* User profile section */}
       <div className="p-4 border-t border-[#1F1F1F] space-y-3">
-        {user && (
+        {isPreview && (
+          <div className="flex items-center gap-2 px-2 py-1.5 bg-[#E8FF00]/5 border border-[#E8FF00]/20 rounded-lg">
+            <Eye size={12} className="text-[#E8FF00] shrink-0" />
+            <span className="text-[9px] font-bold text-[#E8FF00] uppercase tracking-widest truncate">
+              Previewing: {previewClient?.full_name || previewClient?.email}
+            </span>
+          </div>
+        )}
+        {displayUser && (
           <div className="flex items-center gap-3 px-2 py-1 text-left rtl:text-right">
             <div className="w-10 h-10 rounded-full bg-[#161616] border border-[#1F1F1F] flex items-center justify-center font-bebas text-xl text-[#E8FF00] overflow-hidden select-none">
-              {user.avatar_url ? (
-                <img src={user.avatar_url} alt={user.full_name} className="w-full h-full object-cover" />
+              {displayUser.avatar_url ? (
+                <img src={displayUser.avatar_url} alt={displayUser.full_name} className="w-full h-full object-cover" />
               ) : (
-                user.full_name?.charAt(0).toUpperCase()
+                displayUser.full_name?.charAt(0).toUpperCase()
               )}
             </div>
             <div className="flex-1 min-w-0">
               <p className="text-sm font-semibold text-[#F5F5F5] truncate leading-tight">
-                {user.full_name}
+                {displayUser.full_name}
               </p>
-              <Badge variant={user.role === 'admin' ? 'accent' : 'beginner'} className="mt-1 scale-90 origin-left rtl:origin-right">
-                {user.role === 'admin' ? (language === 'ar' ? 'المدرب' : 'Coach') : getFitnessBadgeText(user.fitness_level)}
+              <Badge variant={displayUser.role === 'admin' && !isPreview ? 'accent' : 'beginner'} className="mt-1 scale-90 origin-left rtl:origin-right">
+                {displayUser.role === 'admin' && !isPreview ? (language === 'ar' ? 'المدرب' : 'Coach') : getFitnessBadgeText(displayUser.fitness_level)}
               </Badge>
             </div>
           </div>
         )}
         <div className="flex items-center justify-between gap-2">
           <LanguageSelector />
-          <button
-            onClick={handleLogout}
-            className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-lg border border-[#1F1F1F] bg-transparent text-[#FF3A2D] hover:bg-[#FF3A2D]/10 font-dmsans text-sm font-bold transition-all duration-200 cursor-pointer outline-none"
-          >
-            <LogOut size={16} />
-            <span>{t.logout}</span>
-          </button>
+          {isPreview ? (
+            <button
+              onClick={() => { exitPreview(); navigate('/admin/clients') }}
+              className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-lg border border-[#E8FF00]/30 bg-[#E8FF00]/10 text-[#E8FF00] hover:bg-[#E8FF00]/20 font-dmsans text-sm font-bold transition-all duration-200 cursor-pointer outline-none"
+            >
+              <X size={16} />
+              <span>Exit Preview</span>
+            </button>
+          ) : (
+            <button
+              onClick={handleLogout}
+              className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-lg border border-[#1F1F1F] bg-transparent text-[#FF3A2D] hover:bg-[#FF3A2D]/10 font-dmsans text-sm font-bold transition-all duration-200 cursor-pointer outline-none"
+            >
+              <LogOut size={16} />
+              <span>{t.logout}</span>
+            </button>
+          )}
         </div>
       </div>
     </aside>

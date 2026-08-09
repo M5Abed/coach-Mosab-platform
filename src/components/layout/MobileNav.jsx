@@ -1,17 +1,21 @@
 import React from 'react'
-import { Link, useLocation } from 'react-router-dom'
-import { LayoutDashboard, Dumbbell, Apple, Video, TrendingUp, ShieldAlert, Users, CreditCard } from 'lucide-react'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
+import { LayoutDashboard, Dumbbell, Apple, Video, TrendingUp, ShieldAlert, Users, CreditCard, X } from 'lucide-react'
 import { useLanguageStore } from '../../store/languageStore'
 import { useAuthStore } from '../../store/authStore'
+import { usePreviewStore } from '../../store/previewStore'
 import { translations } from '../../utils/translations'
 
 export function MobileNav() {
   const location = useLocation()
+  const navigate = useNavigate()
   const { language } = useLanguageStore()
   const user = useAuthStore((state) => state.user)
+  const { previewClient, exitPreview } = usePreviewStore()
   const t = translations[language]
 
-  const isAdmin = user?.role === 'admin'
+  const isPreview = !!previewClient
+  const isAdmin = !isPreview && user?.role === 'admin'
 
   const subscriberTabs = [
     { name: t.dashboard, path: '/dashboard', icon: <LayoutDashboard size={20} /> },
@@ -48,6 +52,15 @@ export function MobileNav() {
           </Link>
         )
       })}
+      {isPreview && (
+        <button
+          onClick={() => { exitPreview(); navigate('/admin/clients') }}
+          className="flex flex-col items-center justify-center flex-1 h-full gap-1 transition-colors text-[#E8FF00] cursor-pointer outline-none"
+        >
+          <X size={20} />
+          <span className="text-[10px] font-bold font-dmsans">Exit</span>
+        </button>
+      )}
     </nav>
   )
 }

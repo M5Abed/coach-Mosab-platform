@@ -779,6 +779,7 @@ export function ManageClients() {
   })
 
   return (
+    <>
     <div className="space-y-6 font-dmsans select-none relative">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -1861,8 +1862,10 @@ export function ManageClients() {
             </div>
           </div>
         )}
-      </div>
-    </div>
+
+      </div> {/* /grid grid-cols-12 */}
+    </div> {/* /space-y-6 root */}
+
       {/* =============================================
           COPY PLAN MODAL
           ============================================= */}
@@ -1946,7 +1949,7 @@ export function ManageClients() {
 
                     <button
                       onClick={() => handleCopyPlanTo(c)}
-                      disabled={copyingPlanTo === c.id || !selectedClient.workout_plan && !selectedClient.nutrition_plan}
+                      disabled={copyingPlanTo === c.id || (!selectedClient.workout_plan && !selectedClient.nutrition_plan)}
                       className="shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#E8FF00] hover:bg-[#d4eb00] disabled:opacity-40 disabled:cursor-not-allowed text-black text-[10px] font-bold uppercase tracking-wider transition-colors cursor-pointer outline-none"
                     >
                       {copyingPlanTo === c.id ? (
@@ -1984,6 +1987,7 @@ export function ManageClients() {
           </div>
         </div>
       )}
+    </>
   )
 }
 

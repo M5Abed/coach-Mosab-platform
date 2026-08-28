@@ -377,7 +377,7 @@ export function Landing() {
   const pricingTiers = language === 'ar' ? [
     {
       name: "شهر واحد",
-      price: "499",
+      price: "800",
       duration: "1",
       period: "شهر",
       popular: false,
@@ -391,10 +391,10 @@ export function Landing() {
       ]
     },
     {
-      name: "شهران",
-      price: "899",
-      duration: "2",
-      period: "شهران",
+      name: "3 أشهر",
+      price: "2,000",
+      duration: "3",
+      period: "3 أشهر",
       popular: true,
       badge: "الأكثر طلباً",
       features: [
@@ -407,24 +407,37 @@ export function Landing() {
       ]
     },
     {
-      name: "3 أشهر",
-      price: "1,299",
-      duration: "3",
-      period: "3 أشهر",
+      name: "6 أشهر",
+      price: "3,600",
+      duration: "6",
+      period: "6 أشهر",
       popular: false,
-      saving: "وفر 14%",
+      saving: "وفر 25%",
       features: [
-        "جميع مميزات اشتراك شهرين",
-        "أسعار ثابتة ومحمية لمدة 3 أشهر",
+        "جميع مميزات اشتراك 3 أشهر",
+        "أسعار ثابتة ومحمية لمدة 6 أشهر",
         "متابعة دورية شخصية 1-على-1 من المدرب",
         "أولوية قصوى للرد على الدعم الفني",
         "إمكانية تصدير قياساتك لملف PDF"
+      ]
+    },
+    {
+      name: "تغذية فقط",
+      price: "499",
+      duration: "food",
+      period: "شهر",
+      popular: false,
+      features: [
+        "جدول تغذية وحساب ماكروز مخصص",
+        "الوصول لجدول بدائل الوجبات المرن",
+        "نموذج متابعة وقياسات أسبوعي",
+        "دعم فني عبر لوحة التحكم"
       ]
     }
   ] : [
     {
       name: "1 Month",
-      price: "499",
+      price: "800",
       duration: "1",
       period: "Month",
       popular: false,
@@ -438,10 +451,10 @@ export function Landing() {
       ]
     },
     {
-      name: "2 Months",
-      price: "899",
-      duration: "2",
-      period: "2 Months",
+      name: "3 Months",
+      price: "2,000",
+      duration: "3",
+      period: "3 Months",
       popular: true,
       badge: "MOST POPULAR",
       features: [
@@ -454,18 +467,31 @@ export function Landing() {
       ]
     },
     {
-      name: "3 Months",
-      price: "1,299",
-      duration: "3",
-      period: "3 Months",
+      name: "6 Months",
+      price: "3,600",
+      duration: "6",
+      period: "6 Months",
       popular: false,
-      saving: "SAVE 14%",
+      saving: "SAVE 25%",
       features: [
-        "All features in 2-Month Plan",
-        "Full 3-month locked-in pricing",
+        "All features in 3-Month Plan",
+        "Full 6-month locked-in pricing",
         "1-on-1 direct coaching review logs",
         "Instant support priority response",
         "Personalized PDF progress logs export"
+      ]
+    },
+    {
+      name: "Food Only",
+      price: "499",
+      duration: "food",
+      period: "Month",
+      popular: false,
+      features: [
+        "Customized Diet Sheet & Macro Targets",
+        "Alternatives & Swaps sheet access",
+        "Weekly Progress check-in tracker",
+        "Support via platform settings"
       ]
     }
   ]
@@ -792,7 +818,7 @@ export function Landing() {
             </p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 items-stretch">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 items-stretch">
             {pricingTiers.map((tier) => (
               <div 
                 key={tier.name}

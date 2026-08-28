@@ -34,13 +34,15 @@ export function Payment() {
 
   // Plan selector data
   const planOptions = language === 'ar' ? [
-    { duration: '1', name: 'شهر واحد', price: '499', period: 'شهر', popular: false },
-    { duration: '2', name: 'شهران', price: '899', period: 'شهران', popular: true, badge: 'الأكثر طلباً' },
-    { duration: '3', name: '3 أشهر', price: '1299', period: '3 أشهر', popular: false, saving: 'وفر 14%' },
+    { duration: '1', name: 'شهر واحد', price: '800', period: 'شهر', popular: false },
+    { duration: '3', name: '3 أشهر', price: '2000', period: '3 أشهر', popular: true, badge: 'الأكثر طلباً' },
+    { duration: '6', name: '6 أشهر', price: '3600', period: '6 أشهر', popular: false, saving: 'وفر 25%' },
+    { duration: 'food', name: 'تغذية فقط', price: '499', period: 'شهر', popular: false },
   ] : [
-    { duration: '1', name: '1 Month', price: '499', period: 'Month', popular: false },
-    { duration: '2', name: '2 Months', price: '899', period: '2 Months', popular: true, badge: 'MOST POPULAR' },
-    { duration: '3', name: '3 Months', price: '1299', period: '3 Months', popular: false, saving: 'SAVE 14%' },
+    { duration: '1', name: '1 Month', price: '800', period: 'Month', popular: false },
+    { duration: '3', name: '3 Months', price: '2000', period: '3 Months', popular: true, badge: 'MOST POPULAR' },
+    { duration: '6', name: '6 Months', price: '3600', period: '6 Months', popular: false, saving: 'SAVE 25%' },
+    { duration: 'food', name: 'Food Only', price: '499', period: 'Month', popular: false },
   ]
 
   const [step, setStep] = useState(1)
@@ -231,7 +233,7 @@ export function Payment() {
             </p>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
             {planOptions.map((plan) => (
               <div
                 key={plan.duration}
@@ -300,9 +302,11 @@ export function Payment() {
             <Badge variant="accent" className="h-fit shrink-0">
               {selectedPlan === '1'
                 ? (language === 'ar' ? 'شهر واحد' : '1 Month Plan')
-                : selectedPlan === '2'
-                ? (language === 'ar' ? 'شهران' : '2 Months Plan')
-                : (language === 'ar' ? '3 أشهر' : '3 Months Plan')} — {planPrice} {language === 'ar' ? 'ج.م' : 'EGP'}
+                : selectedPlan === '3'
+                ? (language === 'ar' ? '3 أشهر' : '3 Months Plan')
+                : selectedPlan === '6'
+                ? (language === 'ar' ? '6 أشهر' : '6 Months Plan')
+                : (language === 'ar' ? 'تغذية فقط' : 'Food Only')} — {planPrice} {language === 'ar' ? 'ج.م' : 'EGP'}
             </Badge>
             <button
               onClick={() => { setSelectedPlan(null); setPlanPrice(null); setStep(1) }}

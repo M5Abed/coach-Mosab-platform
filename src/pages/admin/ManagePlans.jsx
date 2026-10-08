@@ -1,8 +1,9 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react'
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import { Card } from '../../components/ui/Card'
 import { Button } from '../../components/ui/Button'
 import { Badge } from '../../components/ui/Badge'
 import { supabase } from '../../lib/supabase'
+import { estimateFoodCalories } from '../../lib/groqCalories'
 import { toast } from '../../store/toastStore'
 import { parseWorkoutPlan, parseNutritionPlan } from '../../utils/planParser'
 import { useLanguageStore } from '../../store/languageStore'
@@ -12,7 +13,6 @@ import {
   Apple,
   Edit3,
   Eye,
-  Save,
   RefreshCw,
   Plus,
   Trash2,
@@ -20,8 +20,9 @@ import {
   Check,
   X,
   Send,
-  FileText,
-  AlertTriangle
+  AlertTriangle,
+  Sparkles,
+  Loader2
 } from 'lucide-react'
 
 // Inline YouTube icon (lucide-react version-safe)
@@ -43,14 +44,9 @@ export function ManagePlans() {
   const [activeTab, setActiveTab] = useState('workout') // 'workout' | 'nutrition'
   const [deleteConfirm, setDeleteConfirm] = useState(null) // { id, title } | null
   
-  // Selection and Editor states
+  // Selection and template form state
   const [selectedPlan, setSelectedPlan] = useState(null) // plan template object
-  const [editingTitle, setEditingTitle] = useState('')
-  const [editingDescription, setEditingDescription] = useState('')
-  const [editingText, setEditingText] = useState('')
-  const [savingPlan, setSavingPlan] = useState(false)
-  
-  // Creator states
+  const [templateBeingEdited, setTemplateBeingEdited] = useState(null)
   const [showCreateModal, setShowCreateModal] = useState(false)
   const [newTitle, setNewTitle] = useState('')
   const [newDescription, setNewDescription] = useState('')
@@ -70,6 +66,9 @@ export function ManagePlans() {
   const [newCarbs, setNewCarbs] = useState(220)
   const [newFat, setNewFat] = useState(65)
   const [newMeals, setNewMeals] = useState([{ name: 'Breakfast', time: '7:00 AM', foods: [{ name: '', qty: '' }] }])
+  const [calculatingNutrition, setCalculatingNutrition] = useState(false)
+  const [nutritionCalculated, setNutritionCalculated] = useState(false)
+  const nutritionEditsRef = useRef(0)
 
   // Assignment Modal states
   const [showAssignModal, setShowAssignModal] = useState(false)
@@ -97,12 +96,82 @@ export function ManagePlans() {
   const updateDayLabel = (dayIdx, label) => setNewDays(prev => prev.map((d, i) => i === dayIdx ? { ...d, label } : d))
 
   // Meal card helpers
-  const addMeal = () => setNewMeals(prev => [...prev, { name: '', time: '', foods: [{ name: '', qty: '' }] }])
-  const removeMeal = (idx) => setNewMeals(prev => prev.filter((_, i) => i !== idx))
-  const updateMeal = (idx, field, value) => setNewMeals(prev => prev.map((m, i) => i === idx ? { ...m, [field]: value } : m))
-  const addFood = (mealIdx) => setNewMeals(prev => prev.map((m, i) => i === mealIdx ? { ...m, foods: [...m.foods, { name: '', qty: '' }] } : m))
-  const removeFood = (mealIdx, foodIdx) => setNewMeals(prev => prev.map((m, i) => i === mealIdx ? { ...m, foods: m.foods.filter((_, fi) => fi !== foodIdx) } : m))
-  const updateFood = (mealIdx, foodIdx, field, value) => setNewMeals(prev => prev.map((m, i) => i === mealIdx ? { ...m, foods: m.foods.map((f, fi) => fi === foodIdx ? { ...f, [field]: value } : f) } : m))
+  const invalidateNutritionCalculation = () => {
+    nutritionEditsRef.current += 1
+    setNutritionCalculated(false)
+  }
+  const addMeal = () => {
+    invalidateNutritionCalculation()
+    setNewMeals(prev => [...prev, { name: '', time: '', foods: [{ name: '', qty: '' }] }])
+  }
+  const removeMeal = (idx) => {
+    invalidateNutritionCalculation()
+    setNewMeals(prev => prev.filter((_, i) => i !== idx))
+  }
+  const updateMeal = (idx, field, value) => {
+    nutritionEditsRef.current += 1
+    setNewMeals(prev => prev.map((m, i) => i === idx ? { ...m, [field]: value } : m))
+  }
+  const addFood = (mealIdx) => {
+    invalidateNutritionCalculation()
+    setNewMeals(prev => prev.map((m, i) => i === mealIdx ? { ...m, foods: [...m.foods, { name: '', qty: '' }] } : m))
+  }
+  const removeFood = (mealIdx, foodIdx) => {
+    invalidateNutritionCalculation()
+    setNewMeals(prev => prev.map((m, i) => i === mealIdx ? { ...m, foods: m.foods.filter((_, fi) => fi !== foodIdx) } : m))
+  }
+  const updateFood = (mealIdx, foodIdx, field, value) => {
+    invalidateNutritionCalculation()
+    setNewMeals(prev => prev.map((m, i) => i === mealIdx ? { ...m, foods: m.foods.map((f, fi) => fi === foodIdx ? { ...f, [field]: value } : f) } : m))
+  }
+
+  const handleCalculateNutrition = async () => {
+    const foods = newMeals.flatMap(meal => meal.foods.filter(food => food.name.trim()))
+    if (foods.length === 0) {
+      toast.error(language === 'ar' ? 'أضف طعاماً واحداً على الأقل أولاً.' : 'Add at least one food item first.')
+      return
+    }
+    if (foods.some(food => !food.qty.trim())) {
+      toast.error(language === 'ar' ? 'أدخل كمية لكل طعام قبل الحساب.' : 'Enter a quantity for each food before calculating.')
+      return
+    }
+
+    const editVersion = nutritionEditsRef.current
+    setCalculatingNutrition(true)
+    try {
+      const result = await estimateFoodCalories(foods)
+      if (editVersion !== nutritionEditsRef.current) return
+      if (result.foods.length !== foods.length) throw new Error('Incomplete food estimates received.')
+
+      let foodIndex = 0
+      const updatedMeals = newMeals.map(meal => ({
+        ...meal,
+        foods: meal.foods.map(food => {
+          if (!food.name.trim()) return food
+          const estimate = result.foods[foodIndex++]
+          return {
+            ...food,
+            calories: Number(estimate.calories) || 0,
+            protein: Number(estimate.protein) || 0,
+            carbs: Number(estimate.carbs) || 0,
+            fat: Number(estimate.fat) || 0
+          }
+        })
+      }))
+      setNewMeals(updatedMeals)
+      setNewCalories(Number(result.totals.calories) || 0)
+      setNewProtein(Number(result.totals.protein) || 0)
+      setNewCarbs(Number(result.totals.carbs) || 0)
+      setNewFat(Number(result.totals.fat) || 0)
+      setNutritionCalculated(true)
+      toast.success(language === 'ar' ? 'تم حساب السعرات والعناصر الغذائية.' : 'Calories and macros calculated.')
+    } catch (err) {
+      console.error('Error calculating template nutrition:', err)
+      toast.error((language === 'ar' ? 'فشل حساب السعرات: ' : 'Calorie calculation failed: ') + err.message)
+    } finally {
+      setCalculatingNutrition(false)
+    }
+  }
 
   // 1. Fetch Plan Templates from public.plans
   const fetchPlansTemplates = useCallback(async () => {
@@ -185,26 +254,89 @@ export function ManagePlans() {
     )
   }, [subscribers, assignSearch])
 
-  // Live parsed preview based on active typing/modifications
+  // Visual preview of the selected template
   const parsedPreview = useMemo(() => {
     if (!selectedPlan) return null
-    if (selectedPlan.type === 'workout') {
-      return parseWorkoutPlan({ text: editingText })
-    } else {
-      return parseNutritionPlan({ text: editingText })
-    }
-  }, [selectedPlan, editingText])
+    return selectedPlan.type === 'workout'
+      ? parseWorkoutPlan(selectedPlan.plan_data)
+      : parseNutritionPlan(selectedPlan.plan_data)
+  }, [selectedPlan])
 
   // Handle plan template selection
   const handleSelectPlan = (plan) => {
     setSelectedPlan(plan)
-    setEditingTitle(plan.title || '')
-    setEditingDescription(plan.description || '')
-    setEditingText(plan.plan_data?.text || '')
   }
 
-  // Create Template handler
-  const handleCreateTemplate = async (e) => {
+  const openCreateTemplate = () => {
+    setTemplateBeingEdited(null)
+    setNewType(activeTab)
+    setNewTitle('')
+    setNewDescription('')
+    setTrainingDays(3)
+    setActiveDay(0)
+    setNewDays([1, 2, 3].map(n => ({
+      label: `Day ${n}`,
+      exercises: [{ name: '', sets: 3, reps: '8:10', rir: '1', rest: '90s', youtubeUrl: '' }]
+    })))
+    setNewCalories(2200)
+    setNewProtein(160)
+    setNewCarbs(220)
+    setNewFat(65)
+    setNewMeals([{ name: 'Breakfast', time: '7:00 AM', foods: [{ name: '', qty: '' }] }])
+    nutritionEditsRef.current += 1
+    setNutritionCalculated(false)
+    setShowCreateModal(true)
+  }
+
+  const openEditTemplate = () => {
+    if (!selectedPlan) return
+    setTemplateBeingEdited(selectedPlan.id)
+    setNewType(selectedPlan.type)
+    setNewTitle(selectedPlan.title || '')
+    setNewDescription(selectedPlan.description || '')
+
+    if (selectedPlan.type === 'workout') {
+      const plan = parseWorkoutPlan(selectedPlan.plan_data)
+      const exercises = plan?.exercises || []
+      const dayCount = Math.min(7, Math.max(1, plan?.days?.length || 0, Number(plan?.daysPerWeek) || 0, ...exercises.map(ex => Number(ex.day) || 1)))
+      const days = Array.from({ length: dayCount }, (_, index) => {
+        const day = plan?.days?.[index]
+        const dayExercises = day?.exercises || exercises.filter(ex => Number(ex.day || 1) === index + 1)
+        return {
+          label: day?.label || `Day ${index + 1}`,
+          exercises: dayExercises.length > 0 ? dayExercises.map(ex => ({
+            name: ex.name || '',
+            sets: Number(ex.sets) || 3,
+            reps: ex.reps || '8:10',
+            rir: String(ex.rir || '—').match(/[0-3]/)?.[0] || '—',
+            rest: ex.rest || '90s',
+            youtubeUrl: ex.youtubeUrl || ''
+          })) : [{ name: '', sets: 3, reps: '8:10', rir: '1', rest: '90s', youtubeUrl: '' }]
+        }
+      })
+      setTrainingDays(dayCount)
+      setActiveDay(0)
+      setNewDays(days)
+    } else {
+      const plan = parseNutritionPlan(selectedPlan.plan_data)
+      setNewCalories(Number(plan?.calories) || 0)
+      setNewProtein(Number(plan?.macros?.protein) || 0)
+      setNewCarbs(Number(plan?.macros?.carbs) || 0)
+      setNewFat(Number(plan?.macros?.fat) || 0)
+      setNewMeals(plan?.meals?.length ? plan.meals.map(meal => ({
+        name: meal.name || '',
+        time: meal.time || '',
+        foods: meal.foods?.length ? meal.foods.map(food => ({ ...food })) : [{ name: '', qty: '' }]
+      })) : [{ name: 'Breakfast', time: '7:00 AM', foods: [{ name: '', qty: '' }] }])
+      setNutritionCalculated(Boolean(plan?.meals?.some(meal => meal.foods?.some(food => food.calories != null))))
+    }
+
+    nutritionEditsRef.current += 1
+    setShowCreateModal(true)
+  }
+
+  // Save the visual template form for both new and existing templates.
+  const handleSaveTemplate = async (e) => {
     e.preventDefault()
     if (!newTitle.trim()) {
       toast.error(language === 'ar' ? 'يرجى إدخال العنوان.' : 'Please enter a title.')
@@ -241,32 +373,53 @@ export function ManagePlans() {
           }))
           return { label: day.label, exercises }
         })
-        // Flat exercises list for backward compat with subscriber views
-        const allExercises = days.flatMap(d => d.exercises)
+        // Keep day numbers on the flat list for subscriber views and older readers.
+        const allExercises = days.flatMap((day, index) =>
+          day.exercises.map(ex => ({ ...ex, day: index + 1 }))
+        )
         textRepresentation = days.map(d => `# ${d.label}:\n${d.exercises.map(ex => `${ex.name} ${ex.sets} ${ex.reps}`).join('\n')}`).join('\n\n')
-        planData = { title: newTitle, days, exercises: allExercises, level: 'intermediate', duration: 'Ongoing', daysPerWeek: trainingDays, text: textRepresentation }
+        planData = {
+          title: newTitle.trim(), days, exercises: allExercises,
+          level: templateBeingEdited ? selectedPlan.plan_data?.level || 'intermediate' : 'intermediate',
+          duration: templateBeingEdited ? selectedPlan.plan_data?.duration || 'Ongoing' : 'Ongoing',
+          daysPerWeek: trainingDays, text: textRepresentation
+        }
       } else {
         const meals = newMeals.filter(m => m.name.trim()).map((m, i) => ({
           id: 'meal-' + (i + 1),
           name: m.name.trim(),
           time: m.time || 'Anytime',
-          foods: m.foods.filter(f => f.name.trim()).map(f => ({ name: f.name.trim(), qty: f.qty || '1 portion' }))
+          foods: m.foods.filter(f => f.name.trim()).map(f => ({
+            name: f.name.trim(),
+            qty: f.qty || '1 portion',
+            ...(nutritionCalculated ? {
+              calories: f.calories || 0,
+              protein: f.protein || 0,
+              carbs: f.carbs || 0,
+              fat: f.fat || 0
+            } : {})
+          }))
         }))
         textRepresentation = `Calories: ${newCalories} kcal | Protein: ${newProtein}g | Carbs: ${newCarbs}g | Fat: ${newFat}g\n\n` +
           meals.map((m, i) => `MEAL ${i+1}: ${m.name} (${m.time})\n${m.foods.map(f => `• ${f.name} — ${f.qty}`).join('\n')}`).join('\n\n')
         planData = { calories: newCalories, macros: { protein: newProtein, carbs: newCarbs, fat: newFat }, meals, text: textRepresentation }
       }
 
-      const { data, error } = await supabase
-        .from('plans')
-        .insert({ title: newTitle, type: newType, description: newDescription, plan_data: planData })
-        .select()
+      const payload = { title: newTitle.trim(), type: newType, description: newDescription, plan_data: planData }
+      const query = templateBeingEdited
+        ? supabase.from('plans').update(payload).eq('id', templateBeingEdited)
+        : supabase.from('plans').insert(payload)
+      const { data, error } = await query.select().single()
 
       if (error) throw error
-      toast.success(language === 'ar' ? 'تم إنشاء خطة جديدة بنجاح!' : 'New plan template created successfully!')
-      if (data && data[0]) {
-        setPlans(prev => [data[0], ...prev])
-        handleSelectPlan(data[0])
+      toast.success(templateBeingEdited
+        ? (language === 'ar' ? 'تم تحديث القالب بنجاح!' : 'Template updated successfully!')
+        : (language === 'ar' ? 'تم إنشاء خطة جديدة بنجاح!' : 'New plan template created successfully!'))
+      if (data) {
+        setPlans(prev => templateBeingEdited
+          ? prev.map(plan => plan.id === data.id ? data : plan)
+          : [data, ...prev])
+        handleSelectPlan(data)
       }
 
       // Reset
@@ -279,64 +432,15 @@ export function ManagePlans() {
       ])
       setNewMeals([{ name: 'Breakfast', time: '7:00 AM', foods: [{ name: '', qty: '' }] }])
       setNewCalories(2200); setNewProtein(160); setNewCarbs(220); setNewFat(65)
+      nutritionEditsRef.current += 1
+      setNutritionCalculated(false)
+      setTemplateBeingEdited(null)
       setShowCreateModal(false)
     } catch (err) {
-      console.error('Error creating template:', err)
-      toast.error(language === 'ar' ? 'فشل حفظ الخطة في قاعدة البيانات.' : 'Failed to save new template.')
+      console.error('Error saving template:', err)
+      toast.error(language === 'ar' ? 'فشل حفظ القالب في قاعدة البيانات.' : 'Failed to save template.')
     } finally {
       setCreatingPlan(false)
-    }
-  }
-
-  // Save changes made to selected template
-  const handleUpdateTemplate = async () => {
-    if (!selectedPlan) return
-    setSavingPlan(true)
-    try {
-      const parsedData = selectedPlan.type === 'workout'
-        ? parseWorkoutPlan({ text: editingText })
-        : parseNutritionPlan({ text: editingText })
-
-      const updatedPayload = {
-        title: editingTitle,
-        description: editingDescription,
-        plan_data: { ...parsedData, text: editingText }
-      }
-
-      const { error } = await supabase
-        .from('plans')
-        .update(updatedPayload)
-        .eq('id', selectedPlan.id)
-
-      if (error) throw error
-
-      toast.success(
-        language === 'ar'
-          ? 'تم تحديث قالب الخطة بنجاح!'
-          : 'Plan template updated successfully!'
-      )
-
-      // Refresh list
-      setPlans(prev => prev.map(p => {
-        if (p.id === selectedPlan.id) {
-          return {
-            ...p,
-            ...updatedPayload
-          }
-        }
-        return p
-      }))
-
-      // Update selected reference
-      setSelectedPlan(prev => ({
-        ...prev,
-        ...updatedPayload
-      }))
-    } catch (err) {
-      console.error('Error updating template:', err)
-      toast.error(language === 'ar' ? 'فشل حفظ التعديلات.' : 'Failed to save template modifications.')
-    } finally {
-      setSavingPlan(false)
     }
   }
 
@@ -426,7 +530,7 @@ export function ManagePlans() {
         
         <div className="flex items-center gap-2">
           <Button
-            onClick={() => setShowCreateModal(true)}
+            onClick={openCreateTemplate}
             className="font-bebas uppercase tracking-wider text-xs py-2 px-4 shadow-[#E8FF00]/5 flex items-center gap-1.5"
           >
             <Plus size={14} /> {language === 'ar' ? 'إنشاء قالب جديد' : 'CREATE NEW TEMPLATE'}
@@ -610,7 +714,7 @@ export function ManagePlans() {
           )}
         </div>
 
-        {/* Right Column: Visual Preview, Text Editor & Manual Assignment Trigger */}
+        {/* Right Column: Visual Preview and Manual Assignment Trigger */}
         {selectedPlan && (
           <div className="lg:col-span-6 space-y-6">
             <div className={`border rounded-xl bg-[#111111] p-6 space-y-6 shadow-2xl relative ${
@@ -632,29 +736,22 @@ export function ManagePlans() {
                 
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                   <div className="space-y-1">
-                    <input 
-                      type="text" 
-                      value={editingTitle} 
-                      onChange={(e) => setEditingTitle(e.target.value)} 
-                      className="bg-transparent border-b border-transparent focus:border-[#E8FF00]/40 font-bebas text-2xl text-[#F5F5F5] tracking-wide uppercase outline-none w-full"
-                    />
-                    <input 
-                      type="text" 
-                      value={editingDescription} 
-                      onChange={(e) => setEditingDescription(e.target.value)} 
-                      className="bg-transparent border-b border-transparent focus:border-zinc-700 text-xs text-[#666666] outline-none w-full font-medium"
-                      placeholder="Template description..."
-                    />
+                    <h3 className="font-bebas text-2xl text-[#F5F5F5] tracking-wide uppercase">{selectedPlan.title}</h3>
+                    {selectedPlan.description && <p className="text-xs text-[#666666] font-medium">{selectedPlan.description}</p>}
                   </div>
 
-                  {/* Manual Assignment Trigger */}
-                  <Button
-                    onClick={() => { setShowAssignModal(true); setAssignSearch('') }}
-                    className="font-bebas text-xs py-2 px-4 uppercase tracking-wide bg-[#E8FF00] hover:bg-[#E8FF00]/90 text-black flex items-center gap-1.5 shrink-0 shadow-lg shadow-[#E8FF00]/10"
-                  >
-                    <Send size={12} />
-                    {language === 'ar' ? 'تعيين لمشترك' : 'Assign to Subscriber'}
-                  </Button>
+                  <div className="flex flex-wrap gap-2">
+                    <Button onClick={openEditTemplate} variant="outline" className="font-bebas text-xs py-2 px-4 uppercase tracking-wide flex items-center gap-1.5">
+                      <Edit3 size={12} /> {language === 'ar' ? 'تعديل القالب' : 'Edit Template'}
+                    </Button>
+                    <Button
+                      onClick={() => { setShowAssignModal(true); setAssignSearch('') }}
+                      className="font-bebas text-xs py-2 px-4 uppercase tracking-wide bg-[#E8FF00] hover:bg-[#E8FF00]/90 text-black flex items-center gap-1.5 shrink-0 shadow-lg shadow-[#E8FF00]/10"
+                    >
+                      <Send size={12} />
+                      {language === 'ar' ? 'تعيين لمشترك' : 'Assign to Subscriber'}
+                    </Button>
+                  </div>
                 </div>
               </div>
 
@@ -680,7 +777,7 @@ export function ManagePlans() {
                             </span>
                           </div>
                           <span className="text-[9px] font-bold text-[#666666] bg-[#161616] px-2 py-0.5 rounded border border-[#1F1F1F] uppercase">
-                            {ex.sets} Sets x {ex.reps} Reps
+                            {language === 'ar' ? 'اليوم' : 'Day'} {ex.day || 1} · {ex.sets} × {ex.reps}
                           </span>
                         </div>
                       ))}
@@ -725,9 +822,11 @@ export function ManagePlans() {
                           {meal.foods && meal.foods.length > 0 && (
                             <div className="space-y-1 pl-2 border-l border-[#1F1F1F]">
                               {meal.foods.map((food, fIdx) => (
-                                <div key={fIdx} className="flex justify-between text-[10px] text-[#CCCCCC]">
+                                <div key={fIdx} className="flex flex-wrap justify-between gap-x-2 text-[10px] text-[#CCCCCC]">
                                   <span>• {food.name}</span>
-                                  <span className="font-semibold text-[#888888]">{food.qty}</span>
+                                  <span className="font-semibold text-[#888888]">
+                                    {food.qty}{food.calories != null ? ` · ${food.calories} kcal` : ''}
+                                  </span>
                                 </div>
                               ))}
                             </div>
@@ -743,41 +842,6 @@ export function ManagePlans() {
                 )}
               </div>
 
-              {/* Template Source Editor */}
-              <div className="space-y-3 pt-4 border-t border-[#1F1F1F] text-left">
-                <div className="flex justify-between items-center">
-                  <h4 className="text-[10px] font-bold text-[#888888] uppercase tracking-wider flex items-center gap-1">
-                    <Edit3 size={12} />
-                    <span>{language === 'ar' ? 'محرر بيانات القالب' : 'TEMPLATE SOURCE EDITOR'}</span>
-                  </h4>
-                  <Button
-                    onClick={handleUpdateTemplate}
-                    disabled={savingPlan}
-                    className="font-bebas text-xs py-1 px-4 uppercase tracking-wide"
-                  >
-                    <Save size={12} className="mr-1.5" />
-                    {savingPlan ? (language === 'ar' ? 'جاري الحفظ...' : 'Saving...') : (language === 'ar' ? 'حفظ التعديلات' : 'Save Changes')}
-                  </Button>
-                </div>
-
-                <div className="flex items-center gap-1.5 px-2 py-1.5 rounded-lg bg-[#E8FF00]/5 border border-[#E8FF00]/10">
-                  <FileText size={10} className="text-[#E8FF00] shrink-0" />
-                  <span className="text-[9px] text-[#888888] font-semibold">
-                    {language === 'ar' ? 'اكتب بيانات التمارين أدناه — سيتم تحويلها تلقائياً إلى بطاقات مرئية أعلاه' : 'Type exercise or meal data below — it auto-renders as visual cards above'}
-                  </span>
-                </div>
-
-                <textarea
-                  value={editingText}
-                  onChange={(e) => setEditingText(e.target.value)}
-                  className="w-full h-36 bg-[#0A0A0A] border border-[#1F1F1F] rounded-lg p-3 text-xs text-[#F5F5F5] focus:border-[#E8FF00]/40 outline-none resize-y"
-                  placeholder={
-                    selectedPlan.type === 'workout'
-                      ? "Flat dumbbell press 3 6:8 1\nLat pull down 3 8:10 1"
-                      : "MEAL 1: Breakfast (7:00 AM)\n• Oats — 70g"
-                  }
-                />
-              </div>
             </div>
           </div>
         )}
@@ -797,19 +861,22 @@ export function ManagePlans() {
             </button>
 
             <h3 className="font-bebas text-2xl text-[#F5F5F5] tracking-wide uppercase mb-1">
-              {language === 'ar' ? 'إنشاء قالب برنامج جديد' : 'CREATE NEW SAVED TEMPLATE'}
+              {templateBeingEdited
+                ? (language === 'ar' ? 'تعديل القالب' : 'EDIT TEMPLATE')
+                : (language === 'ar' ? 'إنشاء قالب برنامج جديد' : 'CREATE NEW SAVED TEMPLATE')}
             </h3>
             <p className="text-[11px] text-[#666666] font-bold uppercase tracking-wider mb-4">
               {language === 'ar' ? 'أضف قالب تمرين أو نظام غذائي مستقل بالكامل' : 'Create an independent blueprint catalog template'}
             </p>
 
-            <form onSubmit={handleCreateTemplate} className="space-y-4">
+            <form onSubmit={handleSaveTemplate} className="space-y-4">
               <div>
                 <label className="block text-[10px] text-[#666666] font-bold uppercase mb-1.5">{language === 'ar' ? 'نوع الخطة' : 'Plan Type'}</label>
                 <div className="flex border border-[#1F1F1F] bg-[#0A0A0A] p-1 rounded-xl w-fit">
                   <button
                     type="button"
                     onClick={() => setNewType('workout')}
+                    disabled={Boolean(templateBeingEdited)}
                     className={`flex items-center gap-1.5 px-4 py-1.5 rounded-lg font-bebas text-xs tracking-wide uppercase transition-all cursor-pointer ${
                       newType === 'workout' ? 'bg-[#1C1C1C] text-[#E8FF00]' : 'text-[#666666]'
                     }`}
@@ -820,6 +887,7 @@ export function ManagePlans() {
                   <button
                     type="button"
                     onClick={() => setNewType('nutrition')}
+                    disabled={Boolean(templateBeingEdited)}
                     className={`flex items-center gap-1.5 px-4 py-1.5 rounded-lg font-bebas text-xs tracking-wide uppercase transition-all cursor-pointer ${
                       newType === 'nutrition' ? 'bg-[#1C1C1C] text-[#4DA6FF]' : 'text-[#666666]'
                     }`}
@@ -965,6 +1033,24 @@ export function ManagePlans() {
                       </div>
                     </div>
                   </div>
+                  <div className="flex flex-wrap items-center gap-3 rounded-xl border border-[#A78BFA]/20 bg-[#A78BFA]/5 p-3">
+                    <Button
+                      type="button"
+                      onClick={handleCalculateNutrition}
+                      disabled={calculatingNutrition || !newMeals.some(meal => meal.foods.some(food => food.name.trim()))}
+                      className="font-bebas uppercase tracking-wider text-xs py-2 px-4 flex items-center gap-1.5 bg-[#A78BFA] hover:bg-[#B79CFF] text-black"
+                    >
+                      {calculatingNutrition ? <Loader2 size={13} className="animate-spin" /> : <Sparkles size={13} />}
+                      {calculatingNutrition
+                        ? (language === 'ar' ? 'جاري الحساب...' : 'Calculating...')
+                        : (language === 'ar' ? 'احسب السعرات بالذكاء الاصطناعي' : 'Calculate Calories with AI')}
+                    </Button>
+                    <span className="text-[10px] text-[#888888] font-medium">
+                      {nutritionCalculated
+                        ? (language === 'ar' ? 'تم ملء السعرات والعناصر الغذائية، ويمكنك تعديلها.' : 'Calories and macros filled in. You can adjust them.')
+                        : (language === 'ar' ? 'أضف الطعام والكميات أولاً، ثم احسب.' : 'Add foods and quantities, then calculate.')}
+                    </span>
+                  </div>
                   {/* Meal cards */}
                   <div className="flex items-center justify-between">
                     <span className="text-[10px] text-[#4DA6FF] font-bold uppercase tracking-wider">Meals</span>
@@ -986,9 +1072,14 @@ export function ManagePlans() {
                         </div>
                         <div className="space-y-1 pl-2 border-l border-[#1F1F1F]">
                           {meal.foods.map((food, fIdx) => (
-                            <div key={fIdx} className="flex items-center gap-2">
-                              <input type="text" value={food.name} onChange={(e) => updateFood(mIdx, fIdx, 'name', e.target.value)} placeholder="Food item" className="flex-1 bg-transparent border-b border-[#1A1A1A] text-[10px] text-[#CCC] py-0.5 outline-none placeholder-[#444]" />
+                            <div key={fIdx} className="flex flex-wrap items-center gap-2">
+                              <input type="text" value={food.name} onChange={(e) => updateFood(mIdx, fIdx, 'name', e.target.value)} placeholder="Food item" className="flex-1 min-w-28 bg-transparent border-b border-[#1A1A1A] text-[10px] text-[#CCC] py-0.5 outline-none placeholder-[#444]" />
                               <input type="text" value={food.qty} onChange={(e) => updateFood(mIdx, fIdx, 'qty', e.target.value)} placeholder="Qty" className="w-16 bg-transparent border-b border-[#1A1A1A] text-[10px] text-[#888] py-0.5 outline-none placeholder-[#444]" />
+                              {nutritionCalculated && food.name.trim() && (
+                                <span className="text-[9px] text-[#A78BFA] font-bold w-full sm:w-auto">
+                                  {food.calories || 0} kcal · P {food.protein || 0} · C {food.carbs || 0} · F {food.fat || 0}
+                                </span>
+                              )}
                               {meal.foods.length > 1 && (
                                 <button type="button" onClick={() => removeFood(mIdx, fIdx)} className="text-[#444] hover:text-[#FF3A2D] cursor-pointer outline-none"><X size={10} /></button>
                               )}
@@ -1005,10 +1096,14 @@ export function ManagePlans() {
               <div className="pt-2">
                 <Button
                   type="submit"
-                  disabled={creatingPlan}
+                  disabled={creatingPlan || calculatingNutrition}
                   className="w-full font-bebas uppercase tracking-wider py-3"
                 >
-                  {creatingPlan ? (language === 'ar' ? 'جاري الحفظ...' : 'Creating Template...') : (language === 'ar' ? 'إنشاء الخطة وتخزينها' : 'Create Template')}
+                  {creatingPlan
+                    ? (language === 'ar' ? 'جاري الحفظ...' : 'Saving Template...')
+                    : templateBeingEdited
+                      ? (language === 'ar' ? 'حفظ التعديلات' : 'Save Changes')
+                      : (language === 'ar' ? 'إنشاء الخطة وتخزينها' : 'Create Template')}
                 </Button>
               </div>
             </form>

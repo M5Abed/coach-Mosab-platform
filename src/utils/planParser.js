@@ -32,32 +32,31 @@ export function parseWorkoutPlan(plan) {
     return null
   }
 
-  // If it already has structured exercises and title, return it as is
-  if (plan.exercises && Array.isArray(plan.exercises) && plan.exercises.length > 0 && plan.title) {
+  // A template's days are the source of truth. Older templates also stored a flat
+  // exercises list without day numbers, so derive those numbers from the days.
+  const days = Array.isArray(plan.days) ? plan.days : []
+  const structuredExercises = days.length > 0
+    ? days.flatMap((day, index) =>
+        (Array.isArray(day?.exercises) ? day.exercises : []).map(ex => ({ ...ex, day: index + 1 }))
+      )
+    : Array.isArray(plan.exercises)
+      ? plan.exercises.map(ex => ({ ...ex, day: ex.day || 1 }))
+      : []
+
+  if (structuredExercises.length > 0) {
     return {
+      ...plan,
       title: plan.title || 'CUSTOM WORKOUT PLAN',
       level: plan.level || 'beginner',
       duration: plan.duration || 'Ongoing',
-      daysPerWeek: plan.daysPerWeek || 3,
-      exercises: plan.exercises.map(ex => ({ ...ex, day: ex.day || 1 })),
+      daysPerWeek: plan.daysPerWeek || days.length || 3,
+      exercises: structuredExercises,
       text: plan.text || ''
     }
   }
 
-  // If there's no valid text to parse, return structured plan or null if no exercises exist either
-  if (!plan.text || typeof plan.text !== 'string' || !plan.text.trim()) {
-    if (plan.exercises && Array.isArray(plan.exercises) && plan.exercises.length > 0) {
-      return {
-        title: plan.title || 'CUSTOM WORKOUT PROGRAM',
-        level: plan.level || 'beginner',
-        duration: plan.duration || 'Ongoing',
-        daysPerWeek: plan.daysPerWeek || 3,
-        exercises: plan.exercises.map(ex => ({ ...ex, day: ex.day || 1 })),
-        text: ''
-      }
-    }
-    return null
-  }
+  // If there's no valid text to parse, there is no usable workout plan.
+  if (!plan.text || typeof plan.text !== 'string' || !plan.text.trim()) return null
 
   const text = plan.text
   const lines = text.split('\n').map(l => l.trim())
@@ -283,11 +282,13 @@ export function parseNutritionPlan(plan) {
     return null
   }
 
-  // If it already has structured macros and meals, return as is
-  if (plan.calories && plan.macros && plan.meals && Array.isArray(plan.meals) && plan.meals.length > 0) {
+  // Keep structured meals and their per-food estimates intact, even when a
+  // calorie target is zero or has not been set yet.
+  if (Array.isArray(plan.meals) && plan.meals.length > 0) {
     return {
-      calories: plan.calories,
-      macros: plan.macros,
+      ...plan,
+      calories: plan.calories ?? 2200,
+      macros: plan.macros || { protein: 160, carbs: 220, fat: 65 },
       meals: plan.meals,
       text: plan.text || ''
     }

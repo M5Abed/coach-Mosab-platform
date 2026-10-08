@@ -47,7 +47,7 @@ export function PrivateRoute({ requireAdmin = false }) {
       <Sidebar />
       <TopBar />
       
-      <div className="flex-1 md:pl-[240px] rtl:md:pl-0 rtl:md:pr-[240px] pt-16 md:pt-0 pb-16 md:pb-0 flex flex-col min-h-screen">
+      <div className="flex-1 min-w-0 md:pl-[240px] rtl:md:pl-0 rtl:md:pr-[240px] pt-16 md:pt-0 pb-[calc(4rem+env(safe-area-inset-bottom))] md:pb-0 flex flex-col min-h-screen">
 
         {/* Pending Subscription Banner */}
         {isPending && (
@@ -106,7 +106,7 @@ export function PrivateRoute({ requireAdmin = false }) {
           </div>
         )}
 
-        <main className="flex-1 p-6 md:p-10 overflow-y-auto">
+        <main className="flex-1 min-w-0 p-4 sm:p-6 md:p-10 overflow-y-auto">
           {isLocked ? (
             /* Subscription Gate — shown instead of content for unverified users */
             <div className="flex flex-col items-center justify-center min-h-[60vh] text-center space-y-6 select-none">

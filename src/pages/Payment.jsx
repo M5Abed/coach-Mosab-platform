@@ -10,6 +10,7 @@ import { Copy, Upload, CheckCircle2, ArrowLeft, Calendar, Phone, DollarSign, Che
 import { useLanguageStore } from '../store/languageStore'
 import { translations } from '../utils/translations'
 import { LanguageSelector } from '../components/ui/LanguageSelector'
+import { PaymentMethodIcon } from '../components/ui/PaymentMethodIcon'
 
 export function Payment() {
   const navigate = useNavigate()
@@ -50,9 +51,9 @@ export function Payment() {
   
   // Payment config methods fetched
   const [methods] = useState([
-    { id: 1, name: 'Instapay', accountName: 'Mosab El-Sayed', number: '01050507775', logo: 'I' },
-    { id: 2, name: 'Vodafone Cash', accountName: 'Mosab El-Sayed', number: '01050507775', logo: 'V' },
-    { id: 3, name: 'Orange Money', accountName: 'Mosab El-Sayed', number: '01050507775', logo: 'O' }
+    { id: 1, name: 'Instapay', accountName: 'Mosab El-Sayed', number: '01050507775' },
+    { id: 2, name: 'Vodafone Cash', accountName: 'Mosab El-Sayed', number: '01050507775' },
+    { id: 3, name: 'Orange Money', accountName: 'Mosab El-Sayed', number: '01050507775' }
   ])
   const [selectedMethod, setSelectedMethod] = useState(methods[0])
 
@@ -331,9 +332,7 @@ export function Payment() {
                       selectedMethod.id === m.id ? 'border-[#E8FF00] shadow-[0_0_10px_rgba(232,255,0,0.05)]' : 'border-[#1F1F1F]'
                     }`}
                   >
-                    <div className="w-6 h-6 rounded bg-[#0A0A0A] flex items-center justify-center text-[10px] text-[#E8FF00] font-bold">
-                      {m.logo}
-                    </div>
+                    <PaymentMethodIcon name={m.name} className="size-7" />
                     <span className="font-bebas text-lg tracking-wide">{m.name}</span>
                   </div>
                 ))}

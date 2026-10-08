@@ -105,7 +105,7 @@ export function Dashboard() {
       </div>
 
       {/* Stats Row */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 text-left rtl:text-right">
+      <div className="grid grid-cols-1 min-[380px]:grid-cols-2 lg:grid-cols-4 gap-4 text-left rtl:text-right">
         <Card className="flex items-center gap-4 bg-[#111111] border border-[#1F1F1F] hover:border-[#2F2F2F] transition-all duration-300">
           <div className="p-3 rounded-lg bg-[#E8FF00]/10 text-[#E8FF00] border border-[#E8FF00]/25">
             <Dumbbell size={24} />

@@ -18,6 +18,7 @@ import { Card } from '../components/ui/Card'
 import { useLanguageStore } from '../store/languageStore'
 import { translations } from '../utils/translations'
 import { LanguageSelector } from '../components/ui/LanguageSelector'
+import { PaymentMethodIcon } from '../components/ui/PaymentMethodIcon'
 import { useAuthStore } from '../store/authStore'
 import { supabase } from '../lib/supabase'
 
@@ -497,11 +498,11 @@ export function Landing() {
   ]
 
   const paymentMethodsLogos = [
-    { name: "Instapay", logo: "/icons/instapay.png", text: "Instapay" },
-    { name: "Vodafone Cash", logo: "/icons/vodafone.png", text: "Vodafone Cash" },
-    { name: "Orange Money", logo: "/icons/orange.png", text: "Orange Money" },
-    { name: "Etisalat Cash", logo: "/icons/etisalat.png", text: "Etisalat Cash" },
-    { name: "WE Pay", logo: "/icons/we.png", text: "WE Pay" }
+    { name: "Instapay", text: "Instapay" },
+    { name: "Vodafone Cash", text: "Vodafone Cash" },
+    { name: "Orange Money", text: "Orange Money" },
+    { name: "Etisalat Cash", text: "Etisalat Cash" },
+    { name: "WE Pay", text: "WE Pay" }
   ]
 
 
@@ -511,13 +512,24 @@ export function Landing() {
       <div className="noise-overlay" />
 
       {/* Hero Section */}
-      <section className="relative h-screen w-full flex flex-col justify-between items-center text-center px-6 md:px-12 py-8 overflow-hidden border-b border-[#1F1F1F]">
-        {/* Background Image with Dark Overlay */}
-        <div 
-          className="absolute inset-0 bg-cover bg-center z-0 opacity-40 scale-105"
-          style={{ backgroundImage: `url('/hero_athlete.png')` }}
+      <section className="relative min-h-screen w-full flex flex-col justify-between items-center text-center px-6 md:px-12 py-8 overflow-hidden border-b border-[#1F1F1F]">
+        {/* Coach portrait and overlays keep the headline readable at every size */}
+        <div
+          className="absolute inset-0 hidden sm:block bg-cover bg-[position:82%_center] lg:bg-center z-0"
+          style={{ backgroundImage: `url('/coach-hero.png')` }}
         />
-        <div className="absolute inset-0 bg-gradient-to-t from-[#0A0A0A] via-[#0A0A0A]/70 to-[#0A0A0A] z-0" />
+        <div
+          className="absolute -inset-8 sm:hidden bg-cover bg-[position:center_18rem] blur-xl opacity-70 z-0"
+          style={{ backgroundImage: `url('/coach-mobile.jpeg')` }}
+        />
+        <div
+          className="absolute inset-0 sm:hidden bg-no-repeat bg-[length:auto_76%] bg-[position:center_top] [mask-image:linear-gradient(to_bottom,black_0%,black_50%,transparent_74%)] z-0"
+          style={{ backgroundImage: `url('/coach-mobile.jpeg')` }}
+        />
+        <div className="absolute inset-0 bg-[#0A0A0A]/25 sm:bg-[#0A0A0A]/55 lg:bg-transparent z-0" />
+        <div className="absolute inset-0 bg-gradient-to-t from-[#0A0A0A]/75 via-[#0A0A0A]/15 to-[#0A0A0A]/20 sm:from-[#0A0A0A] sm:via-transparent sm:to-[#0A0A0A]/60 z-0" />
+        <div className="absolute inset-0 sm:hidden bg-[radial-gradient(ellipse_at_50%_88%,rgba(232,255,0,0.025),transparent_48%)] z-0" />
+        <div className="absolute inset-0 hidden lg:block bg-gradient-to-r from-[#0A0A0A]/90 via-[#0A0A0A]/40 to-transparent z-0" />
 
         {/* Top Navbar */}
         <header className="w-full max-w-7xl mx-auto flex items-center justify-between z-20 relative">
@@ -536,14 +548,11 @@ export function Landing() {
         </header>
 
         {/* Headline */}
-        <div className="max-w-4xl mx-auto flex-1 flex flex-col justify-center items-center z-10 relative px-4 mt-8 md:mt-0">
-          <h1 className="font-bebas text-6xl md:text-8xl lg:text-9xl leading-[0.9] tracking-tight uppercase text-[#F5F5F5]">
+        <div className="w-full max-w-7xl mx-auto flex-1 flex flex-col justify-end sm:justify-center items-center lg:items-start text-center lg:text-left z-10 relative px-4 pb-8 sm:pb-0 mt-0 sm:mt-8 md:mt-0">
+          <h1 className="font-bebas text-5xl min-[380px]:text-6xl md:text-8xl lg:text-[clamp(5rem,7vw,7.5rem)] leading-[0.9] tracking-tight uppercase text-[#F5F5F5]">
             {t.heroTitle1} <br className="hidden md:block"/>
             <span className="text-[#E8FF00] text-stroke-accent">{t.heroTitle2}</span>
           </h1>
-          <p className="mt-6 text-base md:text-lg lg:text-xl text-[#666666] max-w-2xl font-medium tracking-wide">
-            {t.heroSubtitle}
-          </p>
           <div className="mt-8 flex flex-col sm:flex-row gap-4 w-full sm:w-auto">
             <Button size="lg" onClick={() => navigate('/register')} className="px-10">
               {t.startNow}
@@ -554,14 +563,6 @@ export function Landing() {
           </div>
         </div>
 
-        {/* Scrolling Ticker Marquee */}
-        <div className="w-full border-t border-[#1F1F1F] bg-[#0A0A0A]/85 backdrop-blur-sm py-4 overflow-hidden z-10 relative">
-          <div className="animate-marquee flex gap-8 whitespace-nowrap text-xl md:text-2xl font-bebas tracking-widest text-[#666666]">
-            {Array(10).fill(t.marqueeText).map((text, idx) => (
-              <span key={idx} className="hover:text-[#E8FF00] transition-colors">{text}</span>
-            ))}
-          </div>
-        </div>
       </section>
 
       {/* Stats Bar */}
@@ -883,10 +884,8 @@ export function Landing() {
             
             <div className="flex flex-wrap items-center justify-center gap-6 md:gap-8 bg-[#111111] border border-[#1F1F1F] p-4 rounded-xl">
               {paymentMethodsLogos.map((pm) => (
-                <div key={pm.name} className="flex items-center gap-1.5 grayscale opacity-60 hover:grayscale-0 hover:opacity-100 transition-all select-none">
-                  <div className="w-6 h-6 rounded bg-[#161616] border border-[#1F1F1F] flex items-center justify-center font-bold text-xs text-[#E8FF00] uppercase">
-                    {pm.name.charAt(0)}
-                  </div>
+                <div key={pm.name} className="flex items-center gap-2 select-none">
+                  <PaymentMethodIcon name={pm.name} className="size-6" />
                   <span className="text-xs font-semibold text-[#F5F5F5] font-dmsans">{pm.text}</span>
                 </div>
               ))}
@@ -900,11 +899,11 @@ export function Landing() {
       </section>
 
       {/* Footer */}
-      <footer className="bg-[#111111] border-t border-[#E8FF00]/40 py-12 px-6 md:px-12 select-none">
-        <div className="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-8">
+      <footer className="bg-[#111111] border-t border-[#E8FF00]/40 py-7 md:py-9 px-5 md:px-12 select-none">
+        <div className="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-5 md:gap-8">
           {/* Logo & Tagline */}
           <div className="space-y-2 flex flex-col items-center md:items-start text-center md:text-left">
-            <img src="/logo.png" alt="Coach Mosab Logo" className="h-12 w-auto object-contain" />
+            <img src="/logo.png" alt="Coach Mosab Logo" className="h-10 md:h-12 w-auto object-contain" />
             <p className="text-xs text-[#666666] font-medium max-w-xs">
               {language === 'ar' 
                 ? "برنامج تدريب وتغذية وتصميم ماكروز مصري مخصص. مصمم لتطور رياضي فائق."
@@ -914,7 +913,7 @@ export function Landing() {
           </div>
 
           {/* Nav links */}
-          <div className="flex flex-wrap justify-center gap-6 text-sm font-semibold text-[#666666]">
+          <div className="flex flex-wrap justify-center gap-x-3 gap-y-2 md:gap-6 text-xs md:text-sm font-semibold text-[#666666]">
             <Link to="/" className="hover:text-[#E8FF00] transition-colors">{t.home}</Link>
             <Link to="/login" className="hover:text-[#E8FF00] transition-colors">{t.signIn}</Link>
             <Link to="/register" className="hover:text-[#E8FF00] transition-colors">{t.register}</Link>
@@ -922,29 +921,31 @@ export function Landing() {
           </div>
 
           {/* Social icons */}
-          <div className="flex gap-4">
+          <div className="flex gap-3">
             <a 
               href="https://www.instagram.com/mosab_radwan/" 
               target="_blank" 
               rel="noreferrer" 
-              className="text-xs text-[#666666] hover:text-[#E8FF00] font-bold border border-[#1F1F1F] bg-[#161616] px-3 py-1.5 rounded-lg transition-all"
+              aria-label="Instagram"
+              className="text-[#BDBDBD] hover:text-[#E8FF00] border border-[#333333] bg-[#161616] size-11 rounded-lg transition-colors inline-flex items-center justify-center"
             >
-              INSTAGRAM
+              <span aria-hidden="true" className="size-5 bg-current" style={{ mask: "url('/icons/instagram.svg') center / contain no-repeat" }} />
             </a>
             <a 
               href="https://www.tiktok.com/@mosab_radwan" 
               target="_blank" 
               rel="noreferrer" 
-              className="text-xs text-[#666666] hover:text-[#E8FF00] font-bold border border-[#1F1F1F] bg-[#161616] px-3 py-1.5 rounded-lg transition-all"
+              aria-label="TikTok"
+              className="text-[#BDBDBD] hover:text-[#E8FF00] border border-[#333333] bg-[#161616] size-11 rounded-lg transition-colors inline-flex items-center justify-center"
             >
-              TIKTOK
+              <span aria-hidden="true" className="size-5 bg-current" style={{ mask: "url('/icons/tiktok.svg') center / contain no-repeat" }} />
             </a>
           </div>
         </div>
 
-        <div className="max-w-7xl mx-auto border-t border-[#1F1F1F] mt-8 pt-8 flex flex-col md:flex-row items-center justify-between text-xs text-[#666666]">
+        <div className="max-w-7xl mx-auto border-t border-[#1F1F1F] mt-5 pt-5 md:mt-7 md:pt-7 flex flex-col md:flex-row items-center justify-between text-xs text-[#666666]">
           <p>© {new Date().getFullYear()} COACH MOSAB. {language === 'ar' ? "جميع الحقوق محفوظة." : "ALL RIGHTS RESERVED."}</p>
-          <div className="flex gap-4 mt-4 md:mt-0">
+          <div className="flex gap-4 mt-2 md:mt-0">
             <a href="#" className="hover:underline">{language === 'ar' ? "سياسة الخصوصية" : "Privacy Policy"}</a>
             <a href="#" className="hover:underline">{language === 'ar' ? "شروط الخدمة" : "Terms of Service"}</a>
           </div>

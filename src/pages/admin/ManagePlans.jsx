@@ -967,7 +967,7 @@ export function ManagePlans() {
                           <span className="font-bebas text-sm text-[#E8FF00] w-6 shrink-0">{String(idx + 1).padStart(2, '0')}</span>
                           <input type="text" value={ex.name} onChange={(e) => updateExercise(idx, 'name', e.target.value)} placeholder="Exercise name" className="flex-1 bg-transparent border-b border-[#1F1F1F] focus:border-[#E8FF00]/40 text-xs text-[#F5F5F5] py-1 outline-none placeholder-[#444]" />
                         </div>
-                        <div className="grid grid-cols-4 gap-2">
+                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                           <div>
                             <span className="text-[8px] text-[#555] font-bold uppercase block mb-0.5">Sets</span>
                             <select value={ex.sets} onChange={(e) => updateExercise(idx, 'sets', e.target.value)} className="w-full bg-[#111] border border-[#1F1F1F] rounded-lg py-1 px-2 text-[10px] text-[#F5F5F5] outline-none cursor-pointer">
@@ -1014,7 +1014,7 @@ export function ManagePlans() {
                     <label className="text-[10px] text-[#4DA6FF] font-bold uppercase tracking-wider flex items-center gap-1 mb-2">
                       <Apple size={12} /> Daily Macro Targets
                     </label>
-                    <div className="grid grid-cols-4 gap-2">
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                       <div>
                         <span className="text-[8px] text-[#555] font-bold uppercase block mb-0.5">Calories</span>
                         <input type="number" value={newCalories} onChange={(e) => setNewCalories(Number(e.target.value))} className="w-full bg-[#0A0A0A] border border-[#1F1F1F] rounded-lg py-1 px-2 text-[10px] text-[#F5F5F5] outline-none" />

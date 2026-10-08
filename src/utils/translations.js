@@ -19,10 +19,8 @@ export const translations = {
     // Hero Section
     heroTitle1: "TRAIN LIKE IT'S",
     heroTitle2: "YOUR LAST REP",
-    heroSubtitle: "Egypt's premium fitness coaching platform. Tailored workouts, personalized macro sheets, and active reviews designed to push you to the limit.",
     startNow: "START NOW",
     seePrograms: "SEE PROGRAMS",
-    marqueeText: "STRENGTH · CONDITIONING · NUTRITION · DISCIPLINE · RESULTS ·",
 
     // Counters
     activeClients: "Active Clients",
@@ -35,7 +33,7 @@ export const translations = {
     aboutTitle: "MEET COACH MOSAB RADWAN",
     aboutDesc1: "With over 3 years of personal training and sports nutrition experience in Egypt, Coach Mosab has helped hundreds of clients shred fat, build dense muscle, and cultivate mental toughness.",
     aboutDesc2: "Every client's physiology is unique. I don't believe in boilerplate templates. That's why I build every meal plan, weight routine, and progress assessment checklist manually. I review every single payment submission, check-in log, and physical record to ensure you get the absolute best coaching experience.",
-    certIssa: "TASS Certified PT",
+    certIssa: "CERTIFIED PERSONAL TRAINER",
     certNutrition: "Sports Nutrition Specialist",
     certWeight: "Advanced Weight Training Coach",
     certAthlete: "Active Athlete",
@@ -243,10 +241,8 @@ export const translations = {
     // Hero Section
     heroTitle1: "تدرب كأنها",
     heroTitle2: "عدّتك الأخيرة",
-    heroSubtitle: "منصة التدريب الرياضي الفاخرة الأولى في مصر. تمارين مصممة خصيصاً لك، جداول تغذية مخصصة، ومتابعة مستمرة لتصل إلى أقصى حدودك.",
     startNow: "ابدأ الآن",
     seePrograms: "عرض البرامج",
-    marqueeText: "قوة · لياقة · تغذية · التزام · نتائج ·",
 
     // Counters
     activeClients: "العملاء النشطون",
@@ -259,7 +255,7 @@ export const translations = {
     aboutTitle: "تعرف على الكوتش مصعب رضوان",
     aboutDesc1: "مع أكثر من 8 سنوات من الخبرة في التدريب الشخصي والتغذية الرياضية في مصر، ساعد الكوتش مصعب مئات العملاء على حرق الدهون وبناء العضلات واكتساب القوة الذهنية.",
     aboutDesc2: "كل متدرب له طبيعة فسيولوجية فريدة. لا نؤمن بالخطط المجهزة مسبقاً. لهذا أقوم بإعداد كل برنامج تدريبي، وجدول وجبات، ومتابعة تقدم بشكل يدوي تماماً. أراجع كل عملية دفع وأرقام القياسات لضمان أفضل تجربة لك.",
-    certIssa: "مدرب معتمد من ISSA",
+    certIssa: "مدرب شخصي معتمد",
     certNutrition: "أخصائي تغذية رياضية",
     certWeight: "مدرب تمارين قوى متقدمة",
     certAthlete: "رياضي محترف",

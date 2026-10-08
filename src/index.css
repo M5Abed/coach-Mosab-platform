@@ -72,21 +72,6 @@ body {
   color: transparent;
 }
 
-@keyframes marquee {
-  0% { transform: translateX(0%); }
-  100% { transform: translateX(-50%); }
-}
-
-.animate-marquee {
-  display: flex;
-  width: max-content;
-  animation: marquee 20s linear infinite;
-}
-
-.animate-marquee:hover {
-  animation-play-state: paused;
-}
-
 /* Glassmorphism custom classes */
 .glass {
   background: rgba(22, 22, 22, 0.7);

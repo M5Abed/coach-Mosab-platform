@@ -247,12 +247,12 @@ export function DietBuilder() {
             Configure calories, macronutrient thresholds & customize meal items.
           </p>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex flex-col sm:flex-row w-full sm:w-auto gap-3">
           <Button 
             onClick={handleCalculateCalories} 
             disabled={isCalculating}
             variant="outline"
-            className="font-bebas uppercase tracking-wider text-sm py-2 px-5 border-[#A78BFA]/40 text-[#A78BFA] hover:bg-[#A78BFA]/10 hover:border-[#A78BFA] transition-all duration-300 relative overflow-hidden group"
+            className="w-full sm:w-auto font-bebas uppercase tracking-wider text-sm py-2 px-5 border-[#A78BFA]/40 text-[#A78BFA] hover:bg-[#A78BFA]/10 hover:border-[#A78BFA] transition-all duration-300 relative overflow-hidden group"
           >
             {isCalculating ? (
               <>
@@ -264,7 +264,7 @@ export function DietBuilder() {
               </>
             )}
           </Button>
-          <Button onClick={handleSave} className="font-bebas uppercase tracking-wider text-sm py-2 px-6">
+          <Button onClick={handleSave} className="w-full sm:w-auto font-bebas uppercase tracking-wider text-sm py-2 px-6">
             <Save size={16} className="mr-1.5" /> Save Diet Plan
           </Button>
         </div>
